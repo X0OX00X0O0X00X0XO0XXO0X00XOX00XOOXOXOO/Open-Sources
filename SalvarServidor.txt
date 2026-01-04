@@ -1,0 +1,349 @@
+local Players = game:GetService("Players")
+local TeleportService = game:GetService("TeleportService")
+local UserInputService = game:GetService("UserInputService")
+local player = Players.LocalPlayer
+
+local FOLDER = "ServerJoinerOrSaverStorage"
+if not isfolder(FOLDER) then makefolder(FOLDER) end
+
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "KystrypkrySave"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = player:WaitForChild("PlayerGui")
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 320, 0, 500)
+MainFrame.Position = UDim2.new(0.5, -160, 0.5, -250)
+MainFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+MainFrame.BorderSizePixel = 0
+MainFrame.ClipsDescendants = true
+MainFrame.Parent = ScreenGui
+
+local Corner = Instance.new("UICorner", MainFrame)
+Corner.CornerRadius = UDim.new(0, 14)
+
+local Stroke = Instance.new("UIStroke", MainFrame)
+Stroke.Thickness = 3
+Stroke.Color = Color3.fromRGB(255, 255, 255)
+Stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, 0, 0, 50)
+Title.BackgroundTransparency = 1
+Title.Text = "Kystrypkry Salvar"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.Font = Enum.Font.GothamBlack
+Title.TextSize = 20
+Title.BorderSizePixel = 0
+Title.Parent = MainFrame
+
+local NameBox = Instance.new("TextBox")
+NameBox.Size = UDim2.new(0.88, 0, 0, 38)
+NameBox.Position = UDim2.new(0.06, 0, 0.11, 0)
+NameBox.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+NameBox.PlaceholderText = "Nome aqui.."
+NameBox.PlaceholderColor3 = Color3.fromRGB(150, 150, 150)
+NameBox.Text = ""
+NameBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+NameBox.Font = Enum.Font.Gotham
+NameBox.TextSize = 15
+NameBox.BorderSizePixel = 0
+local nc = Instance.new("UICorner", NameBox)
+nc.CornerRadius = UDim.new(0, 10)
+local ns = Instance.new("UIStroke", NameBox)
+ns.Thickness = 2
+ns.Color = Color3.fromRGB(255, 255, 255)
+ns.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+NameBox.Parent = MainFrame
+
+local SaveBtn = Instance.new("TextButton")
+SaveBtn.Size = UDim2.new(0.88, 0, 0, 40)
+SaveBtn.Position = UDim2.new(0.06, 0, 0.20, 0)
+SaveBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+SaveBtn.Text = "Salvar"
+SaveBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+SaveBtn.Font = Enum.Font.GothamBold
+SaveBtn.TextSize = 17
+SaveBtn.BorderSizePixel = 0
+SaveBtn.AutoButtonColor = false
+local sc = Instance.new("UICorner", SaveBtn)
+sc.CornerRadius = UDim.new(0, 10)
+local ss = Instance.new("UIStroke", SaveBtn)
+ss.Thickness = 2
+ss.Color = Color3.fromRGB(255, 255, 255)
+ss.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+SaveBtn.Parent = MainFrame
+
+local ToggleListBtn = Instance.new("TextButton")
+ToggleListBtn.Size = UDim2.new(0.88, 0, 0, 38)
+ToggleListBtn.Position = UDim2.new(0.06, 0, 0.29, 0)
+ToggleListBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+ToggleListBtn.Text = "Mostrar ▼"
+ToggleListBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleListBtn.Font = Enum.Font.GothamBold
+ToggleListBtn.TextSize = 15
+ToggleListBtn.BorderSizePixel = 0
+ToggleListBtn.AutoButtonColor = false
+local tc = Instance.new("UICorner", ToggleListBtn)
+tc.CornerRadius = UDim.new(0, 10)
+local ts = Instance.new("UIStroke", ToggleListBtn)
+ts.Thickness = 2
+ts.Color = Color3.fromRGB(255, 255, 255)
+ts.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+ToggleListBtn.Parent = MainFrame
+
+local ScrollFrame = Instance.new("ScrollingFrame")
+ScrollFrame.Size = UDim2.new(0.88, 0, 0, 210)
+ScrollFrame.Position = UDim2.new(0.06, 0, 0.38, 0)
+ScrollFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+ScrollFrame.BorderSizePixel = 0
+ScrollFrame.ScrollBarThickness = 6
+ScrollFrame.ScrollBarImageColor3 = Color3.fromRGB(255, 255, 255)
+ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+ScrollFrame.Visible = false
+local lc = Instance.new("UICorner", ScrollFrame)
+lc.CornerRadius = UDim.new(0, 10)
+local ls = Instance.new("UIStroke", ScrollFrame)
+ls.Thickness = 2
+ls.Color = Color3.fromRGB(255, 255, 255)
+ls.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+ScrollFrame.Parent = MainFrame
+
+local ListLayout = Instance.new("UIListLayout", ScrollFrame)
+ListLayout.Padding = UDim.new(0, 5)
+ListLayout.SortOrder = Enum.SortOrder.Name
+
+local JoinBtn = Instance.new("TextButton")
+JoinBtn.Size = UDim2.new(0.42, 0, 0, 42)
+JoinBtn.Position = UDim2.new(0.06, 0, 0.90, 0)
+JoinBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+JoinBtn.Text = "Entrar"
+JoinBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+JoinBtn.Font = Enum.Font.GothamBold
+JoinBtn.TextSize = 18
+JoinBtn.BorderSizePixel = 0
+JoinBtn.AutoButtonColor = false
+local jc = Instance.new("UICorner", JoinBtn)
+jc.CornerRadius = UDim.new(0, 10)
+local js = Instance.new("UIStroke", JoinBtn)
+js.Thickness = 2
+js.Color = Color3.fromRGB(255, 255, 255)
+js.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+JoinBtn.Parent = MainFrame
+
+local DeleteBtn = Instance.new("TextButton")
+DeleteBtn.Size = UDim2.new(0.42, 0, 0, 42)
+DeleteBtn.Position = UDim2.new(0.52, 0, 0.90, 0)
+DeleteBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+DeleteBtn.Text = "Deletar"
+DeleteBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+DeleteBtn.Font = Enum.Font.GothamBold
+DeleteBtn.TextSize = 18
+DeleteBtn.BorderSizePixel = 0
+DeleteBtn.AutoButtonColor = false
+local dc = Instance.new("UICorner", DeleteBtn)
+dc.CornerRadius = UDim.new(0, 10)
+local ds = Instance.new("UIStroke", DeleteBtn)
+ds.Thickness = 2
+ds.Color = Color3.fromRGB(255, 255, 255)
+ds.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+DeleteBtn.Parent = MainFrame
+
+local ToggleBtn = Instance.new("ImageButton")
+ToggleBtn.Size = UDim2.new(0, 50, 0, 50)
+ToggleBtn.Position = UDim2.new(0, 10, 0, 10)
+ToggleBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+ToggleBtn.Image = "rbxassetid://132218538595472"
+ToggleBtn.BorderSizePixel = 0
+ToggleBtn.AutoButtonColor = false
+ToggleBtn.Parent = ScreenGui
+local tbc = Instance.new("UICorner", ToggleBtn)
+tbc.CornerRadius = UDim.new(0, 10)
+local tbs = Instance.new("UIStroke", ToggleBtn)
+tbs.Thickness = 2
+tbs.Color = Color3.fromRGB(255, 255, 255)
+tbs.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+
+local function makeDraggable(frame)
+    local dragging = false
+    local dragInput, mousePos, framePos
+    frame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            mousePos = input.Position
+            framePos = frame.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then dragging = false end
+            end)
+        end
+    end)
+    frame.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            dragInput = input
+        end
+    end)
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and input == dragInput then
+            local delta = input.Position - mousePos
+            frame.Position = UDim2.new(framePos.X.Scale, framePos.X.Offset + delta.X, framePos.Y.Scale, framePos.Y.Offset + delta.Y)
+        end
+    end)
+end
+
+makeDraggable(MainFrame)
+makeDraggable(ToggleBtn)
+
+ToggleBtn.MouseButton1Click:Connect(function()
+    MainFrame.Visible = not MainFrame.Visible
+end)
+
+local selectedFile = nil
+
+local function refreshList()
+    local currentSelected = selectedFile
+    for _, child in pairs(ScrollFrame:GetChildren()) do
+        if child:IsA("TextButton") then child:Destroy() end
+    end
+
+    local files = listfiles(FOLDER)
+    local ySize = 0
+    for _, path in pairs(files) do
+        local name = path:match("([^/]+)$")
+        if name and not (name == "IgnoredServers" or name == "PlayerFinderToggleState" or name == "PlayerFinderTextboxName") then
+            local btn = Instance.new("TextButton")
+            btn.Size = UDim2.new(1, -8, 0, 38)
+            btn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+            btn.Text = name
+            btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+            btn.Font = Enum.Font.GothamBold
+            btn.TextSize = 15
+            btn.TextXAlignment = Enum.TextXAlignment.Left
+            btn.TextTruncate = Enum.TextTruncate.AtEnd
+            btn.BorderSizePixel = 0
+            btn.AutoButtonColor = false
+            local bc = Instance.new("UICorner", btn)
+            bc.CornerRadius = UDim.new(0, 8)
+            local bst = Instance.new("UIStroke", btn)
+            bst.Color = Color3.fromRGB(255, 255, 255)
+            bst.Thickness = 1.5
+            bst.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+            local pad = Instance.new("UIPadding", btn)
+            pad.PaddingLeft = UDim.new(0, 10)
+
+            if name == currentSelected then
+                btn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+                btn.TextColor3 = Color3.fromRGB(0, 0, 0)
+                bst.Color = Color3.fromRGB(0, 0, 0)
+                selectedFile = name
+            end
+
+            btn.MouseButton1Click:Connect(function()
+                if selectedFile == name then
+                    btn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+                    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+                    bst.Color = Color3.fromRGB(255, 255, 255)
+                    selectedFile = nil
+                else
+                    for _, b in pairs(ScrollFrame:GetChildren()) do
+                        if b:IsA("TextButton") then
+                            b.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+                            b.TextColor3 = Color3.fromRGB(255, 255, 255)
+                            local s = b:FindFirstChildOfClass("UIStroke")
+                            if s then s.Color = Color3.fromRGB(255, 255, 255) end
+                        end
+                    end
+                    btn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+                    btn.TextColor3 = Color3.fromRGB(0, 0, 0)
+                    bst.Color = Color3.fromRGB(0, 0, 0)
+                    selectedFile = name
+                end
+            end)
+
+            btn.Parent = ScrollFrame
+            ySize = ySize + 43
+        end
+    end
+    ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, ySize)
+end
+
+task.spawn(function()
+    while task.wait(0.3) do
+        if ScrollFrame.Visible then refreshList() end
+    end
+end)
+
+SaveBtn.MouseButton1Click:Connect(function()
+    local name = NameBox.Text:gsub("^%s*(.-)%s*$", "%1")
+    if name == "" then
+        SaveBtn.Text = "Nome vazio!"
+        task.wait(1.2)
+        SaveBtn.Text = "Salvar"
+        return
+    end
+    if game.JobId == "" then
+        SaveBtn.Text = "JobId inválido!"
+        task.wait(1.2)
+        SaveBtn.Text = "Salvar"
+        return
+    end
+    local filePath = FOLDER.."/"..name
+    writefile(filePath, game.JobId.."\n"..game.PlaceId)
+    SaveBtn.Text = "Salvo!"
+    NameBox.Text = ""
+    task.wait(1)
+    SaveBtn.Text = "Salvar"
+    refreshList()
+end)
+
+ToggleListBtn.MouseButton1Click:Connect(function()
+    ScrollFrame.Visible = not ScrollFrame.Visible
+    ToggleListBtn.Text = ScrollFrame.Visible and "Esconder ▲" or "Mostrar ▼"
+end)
+
+JoinBtn.MouseButton1Click:Connect(function()
+    if not selectedFile then
+        JoinBtn.Text = "Selecione!"
+        task.wait(1.2)
+        JoinBtn.Text = "Entrar"
+        return
+    end
+    local filePath = FOLDER.."/"..selectedFile
+    if not isfile(filePath) then
+        JoinBtn.Text = "Arquivo não existe!"
+        task.wait(1.2)
+        JoinBtn.Text = "Entrar"
+        return
+    end
+    local content = readfile(filePath)
+    local jobId = content:match("^([^\n]+)")
+    local placeId = tonumber(content:match("\n(%d+)"))
+    if jobId and placeId then
+        TeleportService:TeleportToPlaceInstance(placeId, jobId, player)
+    else
+        JoinBtn.Text = "Erro ao ler!"
+        task.wait(1.2)
+        JoinBtn.Text = "Entrar"
+    end
+end)
+
+DeleteBtn.MouseButton1Click:Connect(function()
+    if not selectedFile then
+        DeleteBtn.Text = "Selecione!"
+        task.wait(1.2)
+        DeleteBtn.Text = "Deletar"
+        return
+    end
+    local filePath = FOLDER.."/"..selectedFile
+    if isfile(filePath) then
+        delfile(filePath)
+        selectedFile = nil
+        DeleteBtn.Text = "Deletado!"
+        task.wait(1)
+        DeleteBtn.Text = "Deletar"
+        refreshList()
+    else
+        DeleteBtn.Text = "Arquivo não existe!"
+        task.wait(1.2)
+        DeleteBtn.Text = "Deletar"
+    end
+end)
