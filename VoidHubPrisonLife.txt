@@ -1,0 +1,3872 @@
+-- Void Hub Script Prison Life
+
+local repo = "https://raw.githubusercontent.com/coldena/lib/main/"
+
+local Library = loadstring(game:HttpGet(repo .. "Library.lua"))()
+
+local ThemeManager = loadstring(game:HttpGet(repo .. "addons/ThemeManager.lua"))()
+
+local SaveManager = loadstring(game:HttpGet(repo .. "addons/SaveManager.lua"))()
+
+local Options = Library.Options
+
+local Toggles = Library.Toggles
+
+Library.ForceCheckbox = false
+
+Library.ShowToggleFrameInKeybinds = true
+
+local Window = Library:CreateWindow({
+
+    Title = "Void Hub",
+
+    Footer = "version: 1.0",
+
+    Icon = 113789364755152,
+
+    NotifySide = "Right",
+
+    ShowCustomCursor = true,
+
+})
+
+-- Tabs
+
+local Tabs = {
+
+    Aiming = Window:AddTab("Aiming", "crosshair"),
+
+    Visuals = Window:AddTab("Visuals", "eye"),
+
+    Misc = Window:AddTab("Misc", "settings"),
+
+    ["UI Settings"] = Window:AddTab("UI Settings", "settings"),
+
+}
+
+-- Services
+
+local Players = game:GetService('Players')
+
+local RunService = game:GetService('RunService')
+
+local Stats = game:GetService('Stats')
+
+local Workspace = game:GetService('Workspace')
+
+-- Sets the watermark visibility
+
+Library:SetWatermarkVisibility(true)
+
+-- Dynamic FPS + Ping watermark
+
+local FrameTimer = tick()
+
+local FrameCounter = 0
+
+local FPS = 60
+
+local RunService = game:GetService("RunService")
+
+local Stats = game:GetService("Stats")
+
+local WatermarkConnection = RunService.RenderStepped:Connect(function()
+
+    FrameCounter += 1
+
+    if (tick() - FrameTimer) >= 1 then
+
+        FPS = FrameCounter
+
+        FrameTimer = tick()
+
+        FrameCounter = 0
+
+    end
+
+    local ping = math.floor(Stats.Network.ServerStatsItem["Data Ping"]:GetValue())
+
+    Library:SetWatermark(("voidhubb.xyz | FPS: %d | Ping: %dms"):format(
+
+        math.floor(FPS),
+
+        ping
+
+    ))
+
+end)
+
+local UserInputService = game:GetService('UserInputService')
+
+local Workspace = game:GetService('Workspace')
+
+local VirtualInputManager = game:GetService('VirtualInputManager')
+
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+
+local TweenService = game:GetService('TweenService')
+
+local LocalPlayer = Players.LocalPlayer
+
+local Camera = Workspace.CurrentCamera
+
+local CharactersFolder = Workspace:FindFirstChild('Characters') or Workspace
+
+local Mouse = LocalPlayer:GetMouse()
+
+-- Platform Detection
+
+local function detectPlatform()
+
+    if UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled and not UserInputService.MouseEnabled then
+
+        return "Mobile"
+
+    else
+
+        return "PC"
+
+    end
+
+end
+
+local platform = detectPlatform()
+
+-- State Table
+
+local state = {
+
+    AimbotEnabled = false,
+
+    TriggerbotEnabled = false,
+
+    AlwaysOnAimbot = false,
+
+        CurrentAimDirection = nil,
+
+    CurrentTargetPart = nil,
+
+    AlwaysOnTriggerbot = false,
+
+    AimbotSmoothing = 5, -- 1-10 scale, 10 being hard lock
+
+    ESPEnabled = true,
+
+    ShowChams = true,
+
+    ShowNames = true,
+
+    ShowDistance = true,
+
+    RainbowChams = true,
+
+    RainbowSpeed = 0.15,
+
+    FastMoveEnabled = false,
+
+    FastMoveSpeed = 50,
+
+    WebhookThread = nil,
+
+    rainbowHue = {},
+    -- Add this to your state table
+GunModsEnabled = false,
+
+    highlights = {},
+
+    billboards = {},
+
+    connection = nil,
+
+    isJumping = false,
+
+    rmbHolding = false,
+
+    enemiesDetected = false,
+
+    lastMatchFolder = nil,
+
+    lastTeam = nil,
+
+    folderWatcher = nil,
+
+    -- Bullet Tracers
+
+    TracersEnabled = false,
+
+    TracerColor = Color3.fromRGB(0, 255, 0),
+
+    TracerThickness = 0.6,
+
+    TracerWidthEnd = 0.15,
+
+    TracerLifetime = 2.0,
+
+    TracerType = "Normal", -- "Normal" or "Lightning"
+
+    activeTracers = {},
+
+    tracerHook = nil,
+
+    hooked = false,
+
+    -- ESP Colors
+
+    NameColor = Color3.fromRGB(255, 255, 255),
+
+    DistanceColor = Color3.fromRGB(255, 255, 255),
+
+    ChamsColor = Color3.fromRGB(255, 0, 0),
+
+    -- Box ESP Settings (Square-based) with Outline
+
+    BoxESP_Enabled = true,
+
+    Box_Color = Color3.fromRGB(255, 255, 255),
+
+    Box_Thickness = 2,
+
+    Box_Outline_Enabled = true,
+
+    Box_Outline_Color = Color3.fromRGB(0, 0, 0),
+
+    Box_Outline_Thickness = 1,
+
+    MaxDistance = 5000,
+
+    Tracer_Enabled = true,
+
+    Tracer_Color = Color3.fromRGB(255, 255, 255),
+
+    Tracer_Thickness = 1,
+
+    Tracer_Origin = "Bottom",
+
+    Tracer_FollowMouse = false,
+
+    HealthBar_Enabled = true,
+
+    TeamCheck = false,
+
+    TeamColor = true,
+
+    -- Drawing Objects
+
+    espObjects = {},
+
+    espConnections = {},
+
+    -- Weapon Chams
+
+    WeaponChams = false,
+
+    WeaponChamsColor = Color3.fromRGB(255, 0, 255),
+
+    WeaponChamsTransparency = 0,
+
+    -- Rainbow Weapon Chams
+
+    RainbowWeaponChams = false,
+
+    processedWeaponParts = {},
+
+    rainbowWeaponConnections = {},
+
+    -- Local Chams
+
+    LocalChams = false,
+
+    RainbowLocalChams = false,
+
+    LocalChamsColor = Color3.fromRGB(0, 150, 255),
+
+    LocalChamsTransparency = 0.35,
+
+    -- Local Chams Internal State
+
+    localChamsDead = false,
+
+    localChamsCachedVM = nil,
+
+    localChamsTargets = {},
+
+    localChamsOriginals = {},
+
+    localChamsHue = 0,
+
+    localChamsCheckTimer = 0,
+
+    localChamsRainbowConnection = nil,
+
+    -- Silent Aim
+
+    SilentAimEnabled = false,
+
+    SilentAimKeybind = "RightAlt",
+
+    SilentAimFOV = 360,
+
+    SilentAimFOVVisible = true,
+
+    SilentAimTargetPart = "Head",
+
+    SilentAimHitChance = 100,
+
+    -- Silent Aim Drawing
+
+    FOVCircle = nil,
+    FOVCircleOutline = nil, -- NEW: Added outline circle
+
+    SilentAimMouseBox = nil,
+
+    -- Mobile-specific settings
+
+    IsMobile = (platform == "Mobile"),
+
+    -- Executor Compatibility
+
+    SilentAimSupported = true,
+
+    SilentAimLoaded = false,
+
+    ExecutorName = "Unknown",
+
+    -- Notification Control
+
+    NotificationsEnabled = true,
+
+    SilentAimInitialized = false,
+
+    -- New additions
+
+    WalkSpeed = 16,
+
+    WalkSpeedEnabled = false,
+
+    InfiniteJump = false,
+
+    NoclipEnabled = false,
+
+    -- Car Fly System
+
+    CarFlyEnabled = false,
+
+    CarFlySpeed = 50,
+
+    -- Gun Mods
+    AutoFireEnabled = false,
+    InfiniteAmmoEnabled = false,
+    InstantReloadEnabled = false,
+    InfiniteRangeEnabled = false,
+    NoSpreadEnabled = false,
+    RapidFireEnabled = false,
+    RapidFireMultiplier = 1,
+    -- Player Viewer
+    PlayerViewerEnabled = false,
+    PlayerViewerColor = Color3.fromRGB(100, 150, 255),
+    
+    -- BOXES ESP SETTINGS (from Da Hood script)
+    BoxesESP = true, -- Use Boxes ESP style
+    BoxesBox_Color = Color3.fromRGB(255, 255, 255),
+    BoxesTracer_Color = Color3.fromRGB(255, 255, 255),
+    BoxesTracer_Thickness = 1,
+    BoxesBox_Thickness = 1,
+    BoxesTracer_Origin = "Bottom",
+    BoxesTracer_FollowMouse = false,
+    BoxesTracers = true
+}
+
+-- ============================================================
+--   BOXES ESP DRAWING FUNCTIONS (from Da Hood script)
+-- ============================================================
+local function NewQuad(thickness, color)
+    local quad = Drawing.new("Quad")
+    quad.Visible = false
+    quad.PointA = Vector2.new(0,0)
+    quad.PointB = Vector2.new(0,0)
+    quad.PointC = Vector2.new(0,0)
+    quad.PointD = Vector2.new(0,0)
+    quad.Color = color
+    quad.Filled = false
+    quad.Thickness = thickness
+    quad.Transparency = 1
+    return quad
+end
+
+local function NewLine(thickness, color)
+    local line = Drawing.new("Line")
+    line.Visible = false
+    line.From = Vector2.new(0, 0)
+    line.To = Vector2.new(0, 0)
+    line.Color = color 
+    line.Thickness = thickness
+    line.Transparency = 1
+    return line
+end
+
+local function NewText()
+    local text = Drawing.new("Text")
+    text.Visible = false
+    text.Color = Color3.new(1, 1, 1)
+    text.Size = 13
+    text.Center = true
+    text.Outline = true
+    text.OutlineColor = Color3.new(0, 0, 0)
+    text.Transparency = 1
+    return text
+end
+
+local black = Color3.fromRGB(0, 0, 0)
+
+-- SIMPLIFIED CHARACTER DETECTION USING HUMANOID
+local function getValidCharacters()
+    local characters = {}
+    
+    -- Get player characters
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character then
+            local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+            local humanoidRootPart = player.Character:FindFirstChild("HumanoidRootPart")
+            
+            if humanoid and humanoidRootPart and humanoid.Health > 0 then
+                table.insert(characters, player.Character)
+            end
+        end
+    end
+    
+    -- Get NPC characters (non-player models with humanoids)
+    for _, model in ipairs(Workspace:GetChildren()) do
+        if model:IsA("Model") and model ~= LocalPlayer.Character then
+            local humanoid = model:FindFirstChildOfClass("Humanoid")
+            local humanoidRootPart = model:FindFirstChild("HumanoidRootPart")
+            
+            if humanoid and humanoidRootPart and humanoid.Health > 0 then
+                -- Check if it's not already a player character
+                local isPlayerCharacter = false
+                for _, player in ipairs(Players:GetPlayers()) do
+                    if player.Character == model then
+                        isPlayerCharacter = true
+                        break
+                    end
+                end
+                
+                if not isPlayerCharacter then
+                    table.insert(characters, model)
+                end
+            end
+        end
+    end
+    
+    return characters
+end
+
+-- Add this function to update Box ESP colors
+local function updateBoxESPColors()
+    for model, library in pairs(state.espObjects) do
+        if library and state.BoxesESP then
+            -- Update box color
+            if library.box then
+                library.box.Color = state.BoxesBox_Color
+            end
+            if library.black then
+                library.black.Color = Color3.fromRGB(0, 0, 0) -- Keep outline black
+            end
+            
+            -- Update tracer color
+            if library.tracer then
+                library.tracer.Color = state.BoxesTracer_Color
+            end
+            if library.blacktracer then
+                library.blacktracer.Color = Color3.fromRGB(0, 0, 0) -- Keep outline black
+            end
+        elseif library then
+            -- Original ESP style colors
+            if library.box and library.box.main then
+                library.box.main.Color = state.Box_Color
+            end
+            if library.box and library.box.outline then
+                library.box.outline.Color = state.Box_Outline_Color
+            end
+            if library.tracer then
+                library.tracer.Color = state.Tracer_Color
+            end
+        end
+    end
+end
+
+-- Add this function to update text colors
+local function updateTextColors()
+    for model, library in pairs(state.espObjects) do
+        if library then
+            if library.name then
+                library.name.Color = state.NameColor
+            end
+            if library.distance then
+                library.distance.Color = state.DistanceColor
+            end
+        end
+    end
+end
+
+-- Player Viewer System
+local function setupPlayerViewer()
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "PlayerViewer"
+    ScreenGui.Parent = game:GetService("CoreGui") or LocalPlayer:WaitForChild("PlayerGui")
+    
+    -- Main Container
+    local MainFrame = Instance.new("Frame")
+    MainFrame.Name = "PlayerViewerFrame"
+    MainFrame.Size = UDim2.new(0, 320, 0, 180)
+    MainFrame.Position = UDim2.new(0, 10, 0.5, -90)
+    MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+    MainFrame.BackgroundTransparency = 0.05
+    MainFrame.BorderSizePixel = 0
+    MainFrame.Visible = false
+    MainFrame.Parent = ScreenGui
+    
+    -- Corner
+    local UICorner = Instance.new("UICorner")
+    UICorner.CornerRadius = UDim.new(0, 12)
+    UICorner.Parent = MainFrame
+    
+    -- Stroke
+    local UIStroke = Instance.new("UIStroke")
+    UIStroke.Color = state.PlayerViewerColor
+    UIStroke.Thickness = 2
+    UIStroke.Parent = MainFrame
+    
+    -- Drop Shadow
+    local DropShadow = Instance.new("ImageLabel")
+    DropShadow.Name = "DropShadow"
+    DropShadow.Size = UDim2.new(1, 12, 1, 12)
+    DropShadow.Position = UDim2.new(0, -6, 0, -6)
+    DropShadow.BackgroundTransparency = 1
+    DropShadow.Image = "rbxassetid://6015897843"
+    DropShadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
+    DropShadow.ImageTransparency = 0.8
+    DropShadow.ScaleType = Enum.ScaleType.Slice
+    DropShadow.SliceCenter = Rect.new(49, 49, 450, 450)
+    DropShadow.Parent = MainFrame
+    
+    -- Avatar Frame
+    local AvatarFrame = Instance.new("Frame")
+    AvatarFrame.Name = "Avatar"
+    AvatarFrame.Size = UDim2.new(0, 80, 0, 80)
+    AvatarFrame.Position = UDim2.new(0, 15, 0, 15)
+    AvatarFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+    AvatarFrame.BorderSizePixel = 0
+    AvatarFrame.Parent = MainFrame
+    
+    local AvatarCorner = Instance.new("UICorner")
+    AvatarCorner.CornerRadius = UDim.new(0, 8)
+    AvatarCorner.Parent = AvatarFrame
+    
+    local AvatarStroke = Instance.new("UIStroke")
+    AvatarStroke.Color = state.PlayerViewerColor
+    AvatarStroke.Thickness = 2
+    AvatarStroke.Parent = AvatarFrame
+    
+    local AvatarImage = Instance.new("ImageLabel")
+    AvatarImage.Name = "AvatarImage"
+    AvatarImage.Size = UDim2.new(1, -4, 1, -4)
+    AvatarImage.Position = UDim2.new(0, 2, 0, 2)
+    AvatarImage.BackgroundTransparency = 1
+    AvatarImage.Image = "rbxasset://textures/ui/GuiImagePlaceholder.png"
+    AvatarImage.Parent = AvatarFrame
+    
+    local AvatarCorner2 = Instance.new("UICorner")
+    AvatarCorner2.CornerRadius = UDim.new(0, 6)
+    AvatarCorner2.Parent = AvatarImage
+    
+    -- Info Container
+    local InfoFrame = Instance.new("Frame")
+    InfoFrame.Name = "Info"
+    InfoFrame.Size = UDim2.new(0, 200, 0, 140)
+    InfoFrame.Position = UDim2.new(0, 105, 0, 15)
+    InfoFrame.BackgroundTransparency = 1
+    InfoFrame.Parent = MainFrame
+    
+    -- Player Name
+    local PlayerNameLabel = Instance.new("TextLabel")
+    PlayerNameLabel.Name = "PlayerName"
+    PlayerNameLabel.Size = UDim2.new(1, 0, 0, 25)
+    PlayerNameLabel.Position = UDim2.new(0, 0, 0, 0)
+    PlayerNameLabel.BackgroundTransparency = 1
+    PlayerNameLabel.Text = "Player Name"
+    PlayerNameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    PlayerNameLabel.TextSize = 16
+    PlayerNameLabel.Font = Enum.Font.GothamBold
+    PlayerNameLabel.TextXAlignment = Enum.TextXAlignment.Left
+    PlayerNameLabel.Parent = InfoFrame
+    
+    -- Health
+    local HealthLabel = Instance.new("TextLabel")
+    HealthLabel.Name = "Health"
+    HealthLabel.Size = UDim2.new(1, 0, 0, 20)
+    HealthLabel.Position = UDim2.new(0, 0, 0, 30)
+    HealthLabel.BackgroundTransparency = 1
+    HealthLabel.Text = "Health: 100/100"
+    HealthLabel.TextColor3 = Color3.fromRGB(0, 255, 100)
+    HealthLabel.TextSize = 14
+    HealthLabel.Font = Enum.Font.Gotham
+    HealthLabel.TextXAlignment = Enum.TextXAlignment.Left
+    HealthLabel.Parent = InfoFrame
+    
+    -- Distance
+    local DistanceLabel = Instance.new("TextLabel")
+    DistanceLabel.Name = "Distance"
+    DistanceLabel.Size = UDim2.new(1, 0, 0, 20)
+    DistanceLabel.Position = UDim2.new(0, 0, 0, 50)
+    DistanceLabel.BackgroundTransparency = 1
+    DistanceLabel.Text = "Distance: 0m"
+    DistanceLabel.TextColor3 = Color3.fromRGB(200, 200, 255)
+    DistanceLabel.TextSize = 14
+    DistanceLabel.Font = Enum.Font.Gotham
+    DistanceLabel.TextXAlignment = Enum.TextXAlignment.Left
+    DistanceLabel.Parent = InfoFrame
+    
+    -- Equipped Tool
+    local ToolLabel = Instance.new("TextLabel")
+    ToolLabel.Name = "Tool"
+    ToolLabel.Size = UDim2.new(1, 0, 0, 20)
+    ToolLabel.Position = UDim2.new(0, 0, 0, 70)
+    ToolLabel.BackgroundTransparency = 1
+    ToolLabel.Text = "Tool: None"
+    ToolLabel.TextColor3 = Color3.fromRGB(255, 200, 100)
+    ToolLabel.TextSize = 14
+    ToolLabel.Font = Enum.Font.Gotham
+    ToolLabel.TextXAlignment = Enum.TextXAlignment.Left
+    ToolLabel.Parent = InfoFrame
+    
+    -- Backpack Count
+    local BackpackLabel = Instance.new("TextLabel")
+    BackpackLabel.Name = "Backpack"
+    BackpackLabel.Size = UDim2.new(1, 0, 0, 20)
+    BackpackLabel.Position = UDim2.new(0, 0, 0, 90)
+    BackpackLabel.BackgroundTransparency = 1
+    BackpackLabel.Text = "Backpack: 0 tools"
+    BackpackLabel.TextColor3 = Color3.fromRGB(150, 200, 255)
+    BackpackLabel.TextSize = 14
+    BackpackLabel.Font = Enum.Font.Gotham
+    BackpackLabel.TextXAlignment = Enum.TextXAlignment.Left
+    BackpackLabel.Parent = InfoFrame
+    
+    -- State
+    local currentTarget = nil
+    local lastUpdate = 0
+    local avatarCache = {}
+    local UPDATE_INTERVAL = 0.1
+    
+    local function getMousePosition()
+        if UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled then
+            local viewportSize = Camera.ViewportSize
+            return Vector2.new(viewportSize.X / 2, viewportSize.Y / 2)
+        else
+            return UserInputService:GetMouseLocation()
+        end
+    end
+    
+    local function isInFOV(position)
+        local screenPosition, onScreen = Camera:WorldToViewportPoint(position)
+        if not onScreen then return false end
+        
+        local centerPos = getMousePosition()
+        local distance = (Vector2.new(screenPosition.X, screenPosition.Y) - centerPos).Magnitude
+        return distance <= (state.SilentAimFOV or 360)
+    end
+    
+    local function getClosestPlayerInFOV()
+        local closestPlayer = nil
+        local closestDistance = math.huge
+        local center = getMousePosition()
+        
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer and player.Character then
+                local humanoidRootPart = player.Character:FindFirstChild("HumanoidRootPart")
+                if humanoidRootPart and isInFOV(humanoidRootPart.Position) then
+                    local screenPosition = Camera:WorldToViewportPoint(humanoidRootPart.Position)
+                    local distance = (Vector2.new(screenPosition.X, screenPosition.Y) - center).Magnitude
+                    if distance < closestDistance then
+                        closestDistance = distance
+                        closestPlayer = player
+                    end
+                end
+            end
+        end
+        
+        return closestPlayer
+    end
+    
+    local function getPlayerAvatar(userId)
+        if avatarCache[userId] then
+            return avatarCache[userId]
+        end
+        
+        local url = "https://www.roblox.com/headshot-thumbnail/image?userId=" .. userId .. "&width=150&height=150&format=png"
+        avatarCache[userId] = url
+        return url
+    end
+    
+    local function getEquippedTool(player)
+        local playerTool = workspace:FindFirstChild(player.Name)
+        if playerTool and playerTool:IsA("Tool") then
+            return playerTool.Name
+        end
+        
+        if player.Character then
+            for _, tool in ipairs(player.Character:GetChildren()) do
+                if tool:IsA("Tool") then
+                    return tool.Name
+                end
+            end
+        end
+        
+        return "None"
+    end
+    
+    local function getBackpackTools(player)
+        local backpack = player:FindFirstChild("Backpack")
+        if backpack then
+            local toolCount = 0
+            for _, item in ipairs(backpack:GetChildren()) do
+                if item:IsA("Tool") then
+                    toolCount = toolCount + 1
+                end
+            end
+            return toolCount
+        end
+        return 0
+    end
+    
+    local function updatePlayerInfo(player)
+        if not player or not player.Character then
+            MainFrame.Visible = false
+            currentTarget = nil
+            return
+        end
+        
+        currentTarget = player
+        MainFrame.Visible = true
+        
+        -- Update player name
+        PlayerNameLabel.Text = player.Name
+        
+        -- Update avatar
+        local userId = player.UserId
+        AvatarImage.Image = getPlayerAvatar(userId)
+        
+        -- Update health
+        local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            local health = math.floor(humanoid.Health)
+            local maxHealth = math.floor(humanoid.MaxHealth)
+            local healthColor = Color3.fromRGB(0, 255, 100)
+            
+            if health / maxHealth < 0.3 then
+                healthColor = Color3.fromRGB(255, 50, 50)
+            elseif health / maxHealth < 0.7 then
+                healthColor = Color3.fromRGB(255, 200, 50)
+            end
+            
+            HealthLabel.Text = "Health: " .. health .. "/" .. maxHealth
+            HealthLabel.TextColor3 = healthColor
+        else
+            HealthLabel.Text = "Health: 0/0"
+            HealthLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
+        end
+        
+        -- Update distance
+        local humanoidRootPart = player.Character:FindFirstChild("HumanoidRootPart")
+        if humanoidRootPart then
+            local distance = math.floor((humanoidRootPart.Position - Camera.CFrame.Position).Magnitude)
+            DistanceLabel.Text = "Distance: " .. distance .. "m"
+        else
+            DistanceLabel.Text = "Distance: N/A"
+        end
+        
+        -- Update equipped tool
+        local equippedTool = getEquippedTool(player)
+        ToolLabel.Text = "Tool: " .. equippedTool
+        
+        -- Update backpack count
+        local backpackCount = getBackpackTools(player)
+        BackpackLabel.Text = "Backpack: " .. backpackCount .. " tools"
+    end
+    
+    -- Make frame draggable (only on PC)
+    if not UserInputService.TouchEnabled then
+        local dragging = false
+        local dragInput, dragStart, startPos
+        
+        local function update(input)
+            local delta = input.Position - dragStart
+            MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+        
+        MainFrame.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                dragging = true
+                dragStart = input.Position
+                startPos = MainFrame.Position
+                
+                input.Changed:Connect(function()
+                    if input.UserInputState == Enum.UserInputState.End then
+                        dragging = false
+                    end
+                end)
+            end
+        end)
+        
+        MainFrame.InputChanged:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseMovement then
+                dragInput = input
+            end
+        end)
+        
+        UserInputService.InputChanged:Connect(function(input)
+            if input == dragInput and dragging then
+                update(input)
+            end
+        end)
+    end
+    
+    -- Main update loop
+    local playerViewerConnection
+    playerViewerConnection = RunService.Heartbeat:Connect(function()
+        if not state.PlayerViewerEnabled then
+            MainFrame.Visible = false
+            currentTarget = nil
+            return
+        end
+        
+        local currentTime = tick()
+        if currentTime - lastUpdate >= UPDATE_INTERVAL then
+            lastUpdate = currentTime
+            
+            local closestPlayer = getClosestPlayerInFOV()
+            
+            if closestPlayer and closestPlayer ~= currentTarget then
+                updatePlayerInfo(closestPlayer)
+            elseif not closestPlayer and currentTarget then
+                MainFrame.Visible = false
+                currentTarget = nil
+            elseif closestPlayer and closestPlayer == currentTarget then
+                updatePlayerInfo(closestPlayer)
+            end
+        end
+    end)
+    
+    -- Update stroke color when changed
+    local function updateStrokeColor()
+        UIStroke.Color = state.PlayerViewerColor
+        AvatarStroke.Color = state.PlayerViewerColor
+    end
+    
+    return {
+        connection = playerViewerConnection,
+        updateColor = updateStrokeColor,
+        destroy = function()
+            if playerViewerConnection then
+                playerViewerConnection:Disconnect()
+            end
+            if ScreenGui then
+                ScreenGui:Destroy()
+            end
+        end
+    }
+end
+
+local playerViewerSystem = setupPlayerViewer()
+
+-- Gun Mods System (Re-scan every second + optimized)
+local RunService = game:GetService("RunService")
+
+-- Gun Mods System (Fully Fixed + Correct Toggles)
+local RunService = game:GetService("RunService")
+
+local function setupGunMods()
+    local gunModsConnection
+    local lastScan = 0
+
+    --------------------------------------------------------------------
+    -- Check if ANY mod is enabled (for start/stop logic)
+    --------------------------------------------------------------------
+    local function anyModEnabled()
+        return state.AutoFireEnabled
+            or state.InfiniteAmmoEnabled
+            or state.InstantReloadEnabled
+            or state.InfiniteRangeEnabled
+            or state.NoSpreadEnabled
+            or state.RapidFireEnabled
+    end
+
+    --------------------------------------------------------------------
+    -- Helper: find newest table with a key
+    --------------------------------------------------------------------
+    local function find(key)
+        for _, obj in ipairs(getgc(true)) do
+            if type(obj) == "table" and rawget(obj, key) ~= nil then
+                return obj
+            end
+        end
+        return nil
+    end
+
+    --------------------------------------------------------------------
+    -- PATCH FUNCTIONS
+    --------------------------------------------------------------------
+
+    local function Patch_RapidFire()
+        local t = find("FireRate")
+        if not t then return end
+
+        local mult = state.RapidFireMultiplier or 1
+        local newRate = 0.1 / mult
+
+        t.FireRate = math.max(newRate, 0.001)
+     
+    end
+
+    local function Patch_AutoFire()
+        local t = find("AutoFire")
+        if t then t.AutoFire = true end
+    end
+
+    local function Patch_InfiniteAmmo()
+        for _, obj in ipairs(getgc(true)) do
+            if type(obj) == "table"
+                and rawget(obj, "CurrentAmmo")
+                and rawget(obj, "MaxAmmo") then
+
+                obj.CurrentAmmo = math.huge
+                obj.MaxAmmo = math.huge
+            end
+        end
+    end
+
+    local function Patch_InstantReload()
+        local t = find("ReloadTime")
+        if t then t.ReloadTime = 0 end
+    end
+
+    local function Patch_InfiniteRange()
+        local t = find("Range")
+        if t then t.Range = math.huge end
+    end
+
+    local function Patch_NoSpread()
+        local t = find("Spread")
+        if t then t.Spread = 99999 end
+    end
+
+    --------------------------------------------------------------------
+    -- APPLY MODS every 1 second
+    --------------------------------------------------------------------
+    local function applyGunMods()
+        if tick() - lastScan < 1 then return end
+        lastScan = tick()
+
+        if state.AutoFireEnabled then Patch_AutoFire() end
+        if state.InfiniteAmmoEnabled then Patch_InfiniteAmmo() end
+        if state.InstantReloadEnabled then Patch_InstantReload() end
+        if state.InfiniteRangeEnabled then Patch_InfiniteRange() end
+        if state.NoSpreadEnabled then Patch_NoSpread() end
+        if state.RapidFireEnabled then Patch_RapidFire() end
+    end
+
+    --------------------------------------------------------------------
+    -- Start/Stop handlers
+    --------------------------------------------------------------------
+    local function start()
+        if gunModsConnection then gunModsConnection:Disconnect() end
+        gunModsConnection = RunService.Heartbeat:Connect(applyGunMods)
+    end
+
+    local function stop()
+        if gunModsConnection then
+            gunModsConnection:Disconnect()
+            gunModsConnection = nil
+        end
+    end
+
+    return {
+        start = function()
+            if anyModEnabled() then
+                start()
+            end
+        end,
+
+        stop = function()
+            if not anyModEnabled() then
+                stop()
+            end
+        end,
+
+        _checkMods = anyModEnabled
+    }
+end
+
+local gunModsSystem = setupGunMods()
+
+
+
+-- Car Fly System (Fixed Rotation)
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+
+local velocityHandlerName = "VehicleFlyVelocity32"
+local gyroHandlerName = "VehicleFlyGyro64"
+local VelocityHandler = nil
+local GyroHandler = nil
+local carFlyConnection = nil
+
+-- Track last camera rotation
+local lastCamLook = nil
+local mouseMovedRecently = false
+local lastMouseMoveTime = 0
+local mouseIdleThreshold = 0.05  -- stop rotating 50ms after mouse stops moving
+
+------------------------------------------------------------------
+-- Detect real mouse movement
+------------------------------------------------------------------
+UserInputService.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement then
+        mouseMovedRecently = true
+        lastMouseMoveTime = tick()
+    end
+end)
+
+------------------------------------------------------------------
+-- Setup flight bodies
+------------------------------------------------------------------
+local function setupFlyInstances(character)
+    if not character or not character:FindFirstChild("HumanoidRootPart") then
+        return
+    end
+
+    local root = character.HumanoidRootPart
+
+    if root:FindFirstChild(velocityHandlerName) then
+        root[velocityHandlerName]:Destroy()
+    end
+    if root:FindFirstChild(gyroHandlerName) then
+        root[gyroHandlerName]:Destroy()
+    end
+
+    VelocityHandler = Instance.new("BodyVelocity")
+    VelocityHandler.Name = velocityHandlerName
+    VelocityHandler.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+    VelocityHandler.Velocity = Vector3.new()
+    VelocityHandler.Parent = root
+
+    GyroHandler = Instance.new("BodyGyro")
+    GyroHandler.Name = gyroHandlerName
+    GyroHandler.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+    GyroHandler.P = 3000
+    GyroHandler.D = 80
+    GyroHandler.CFrame = root.CFrame
+    GyroHandler.Parent = root
+
+    lastCamLook = workspace.CurrentCamera.CFrame.LookVector
+end
+
+------------------------------------------------------------------
+-- Disable Flight
+------------------------------------------------------------------
+local function DisableCarFlight()
+    if VelocityHandler then VelocityHandler:Destroy() VelocityHandler = nil end
+    if GyroHandler then GyroHandler:Destroy() GyroHandler = nil end
+end
+
+------------------------------------------------------------------
+-- Handle movement & rotation
+------------------------------------------------------------------
+local function handleCarFlyInput()
+    if not state.CarFlyEnabled then return end
+
+    local character = LocalPlayer.Character
+    if not character then return end
+    local root = character:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+
+    local cam = workspace.CurrentCamera
+    local speed = state.CarFlySpeed or 80
+
+    ------------------------------------------------------------------
+    -- MOVEMENT (WASD + QE)
+    ------------------------------------------------------------------
+    local vel = Vector3.new()
+    local forward = root.CFrame.LookVector
+    local right = root.CFrame.RightVector
+
+    if UserInputService:IsKeyDown(Enum.KeyCode.W) then vel += forward * speed end
+    if UserInputService:IsKeyDown(Enum.KeyCode.S) then vel -= forward * speed end
+    if UserInputService:IsKeyDown(Enum.KeyCode.A) then vel -= right * speed end
+    if UserInputService:IsKeyDown(Enum.KeyCode.D) then vel += right * speed end
+    if UserInputService:IsKeyDown(Enum.KeyCode.E) then vel += Vector3.new(0, speed, 0) end
+    if UserInputService:IsKeyDown(Enum.KeyCode.Q) then vel -= Vector3.new(0, speed, 0) end
+
+    if VelocityHandler then
+        VelocityHandler.Velocity = vel
+    end
+
+    ------------------------------------------------------------------
+    -- ROTATION FIX
+    ------------------------------------------------------------------
+    local camLook = cam.CFrame.LookVector
+
+    -- Detect mouse inactivity
+    if tick() - lastMouseMoveTime > mouseIdleThreshold then
+        mouseMovedRecently = false
+    end
+
+    if mouseMovedRecently then
+        lastCamLook = camLook
+    end
+
+    if GyroHandler then
+        GyroHandler.CFrame = CFrame.new(root.Position, root.Position + lastCamLook)
+    end
+end
+
+------------------------------------------------------------------
+-- Toggle Flight
+------------------------------------------------------------------
+function toggleCarFly()
+    state.CarFlyEnabled = not state.CarFlyEnabled
+
+    if state.CarFlyEnabled then
+        Library:Notify("Car Fly Enabled", 2)
+
+        if carFlyConnection then
+            carFlyConnection:Disconnect()
+        end
+
+        carFlyConnection = RunService.Heartbeat:Connect(function()
+            local char = LocalPlayer.Character
+            if not char then return end
+
+            local hum = char:FindFirstChild("Humanoid")
+            if hum and hum.SeatPart then
+                if not VelocityHandler then
+                    setupFlyInstances(char)
+                end
+                handleCarFlyInput()
+            else
+                DisableCarFlight()
+            end
+        end)
+
+    else
+        Library:Notify("Car Fly Disabled", 2)
+        DisableCarFlight()
+
+        if carFlyConnection then
+            carFlyConnection:Disconnect()
+            carFlyConnection = nil
+        end
+    end
+end
+
+
+-- Noclip System
+local function setupNoclip()
+    local Plr = Players.LocalPlayer
+    local Clipon = false
+    local Stepped
+    local function toggleNoclip()
+        if not Clipon then
+            Clipon = true
+            Stepped = game:GetService("RunService").Stepped:Connect(function()
+                if not Clipon == false then
+                    for a, b in pairs(Workspace:GetChildren()) do
+                        if b.Name == Plr.Name then
+                        for i, v in pairs(Workspace[Plr.Name]:GetChildren()) do
+                        if v:IsA("BasePart") then
+                        v.CanCollide = false
+                        end end end end
+                else
+                    Stepped:Disconnect()
+                end
+            end)
+        else
+            Clipon = false
+            if Stepped then
+                Stepped:Disconnect()
+            end
+        end
+        state.NoclipEnabled = Clipon
+        Library:Notify("Noclip " .. (Clipon and "Enabled" or "Disabled"), 2)
+    end
+    return toggleNoclip
+end
+
+local toggleNoclipFunction = setupNoclip()
+
+-- WalkSpeed System
+local function updateWalkSpeed()
+    local character = LocalPlayer.Character
+    if character and state.WalkSpeedEnabled then
+        local humanoid = character:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            humanoid.WalkSpeed = state.WalkSpeed
+        end
+    end
+end
+
+-- Weapon Chams System (Fixed - Only applies to weapons/tools)
+local function applyWeaponChams()
+    if not state.WeaponChams and not state.RainbowWeaponChams then return end
+    
+    local character = LocalPlayer.Character
+    if not character then return end
+    -- Function to apply weapon chams material to weapon parts only
+    local function applyWeaponMaterial(part)
+        if not part:IsA("BasePart") then return end
+        
+        -- Skip character body parts
+        if part.Name == "Left Arm" or part.Name == "Right Arm" or part.Name == "HumanoidRootPart" 
+           or part.Name == "Left Leg" or part.Name == "Right Leg" or part.Name == "Torso" 
+           or part.Name == "Head" then
+            return 
+        end
+        -- Only apply to weapon/tool parts
+        local isWeaponPart = false
+        
+        -- Check if part belongs to a tool
+        local parent = part.Parent
+        while parent and parent ~= character do
+            if parent:IsA("Tool") then
+                isWeaponPart = true
+                break
+            end
+            parent = parent.Parent
+        end
+        
+        -- Also check for common weapon part names
+        if not isWeaponPart then
+            local weaponNames = {"Gun", "Knife", "Sword", "Weapon", "Handle", "Blade", "Muzzle", "Barrel"}
+            for _, weaponName in ipairs(weaponNames) do
+                if string.find(part.Name:lower(), weaponName:lower()) then
+                    isWeaponPart = true
+                    break
+                end
+            end
+        end
+        if not isWeaponPart then return end
+        -- Save original if not already saved
+        if not state.processedWeaponParts[part] then
+            state.processedWeaponParts[part] = {
+                Material = part.Material,
+                Color = part.Color,
+                Transparency = part.Transparency
+            }
+        end
+        
+        -- Apply chams
+        part.Material = Enum.Material.ForceField
+        part.Transparency = state.WeaponChamsTransparency
+        
+        if state.RainbowWeaponChams then
+            local hue = (tick() * 0.25) % 1
+            part.Color = Color3.fromHSV(hue, 1, 1)
+        else
+            part.Color = state.WeaponChamsColor
+        end
+    end
+
+    -- Apply to tools in character
+    for _, tool in ipairs(character:GetChildren()) do
+        if tool:IsA("Tool") then
+            for _, obj in ipairs(tool:GetDescendants()) do
+                applyWeaponMaterial(obj)
+            end
+        end
+    end
+    
+    -- Also check for weapon parts directly in character
+    for _, obj in ipairs(character:GetDescendants()) do
+        applyWeaponMaterial(obj)
+    end
+end
+
+local function clearWeaponChams()
+    for part, original in pairs(state.processedWeaponParts) do
+        if part and part.Parent then
+            pcall(function()
+                part.Material = original.Material
+                part.Color = original.Color
+                part.Transparency = original.Transparency
+            end)
+        end
+    end
+    state.processedWeaponParts = {}
+end
+
+local function updateWeaponChams()
+    if state.WeaponChams or state.RainbowWeaponChams then
+        applyWeaponChams()
+    else
+        clearWeaponChams()
+    end
+end
+
+-- Local Chams System (ForceField) - Applies to character only
+local function setupLocalChams()
+    local function applyForceFieldChams()
+        local character = LocalPlayer.Character
+        if not character then return end
+        
+        for _, part in ipairs(character:GetDescendants()) do
+            if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+                -- Skip weapon parts for local chams
+                local isWeaponPart = false
+                local parent = part.Parent
+                while parent and parent ~= character do
+                    if parent:IsA("Tool") then
+                        isWeaponPart = true
+                        break
+                    end
+                    parent = parent.Parent
+                end
+                
+                if isWeaponPart then
+                    continue
+                end
+                
+                -- Save original if not already saved
+                if not state.localChamsOriginals[part] then
+                    state.localChamsOriginals[part] = {
+                        Material = part.Material,
+                        Color = part.Color,
+                        Transparency = part.Transparency
+                    }
+                end
+                
+                -- Apply chams
+                part.Material = Enum.Material.ForceField
+                part.Transparency = state.LocalChamsTransparency
+                
+                if state.RainbowLocalChams then
+                    part.Color = Color3.fromHSV(state.localChamsHue, 1, 1)
+                else
+                    part.Color = state.LocalChamsColor
+                end
+            end
+        end
+    end
+
+    local function clearForceFieldChams()
+        local character = LocalPlayer.Character
+        if not character then return end
+        
+        for part, original in pairs(state.localChamsOriginals) do
+            if part and part.Parent then
+                pcall(function()
+                    part.Material = original.Material
+                    part.Color = original.Color
+                    part.Transparency = original.Transparency
+                end)
+            end
+        end
+        state.localChamsOriginals = {}
+    end
+
+    local function rebuildLocalChams()
+        if state.localChamsDead then return end
+        if state.LocalChams or state.RainbowLocalChams then
+            applyForceFieldChams()
+        else
+            clearForceFieldChams()
+        end
+    end
+
+    local function enableLocalChams()
+        if state.localChamsDead then return end
+        state.LocalChams = true
+        rebuildLocalChams()
+    end
+
+    local function disableLocalChams()
+        if state.localChamsDead then return end
+        state.LocalChams = false
+        clearForceFieldChams()
+        
+        if state.localChamsRainbowConnection then
+            state.localChamsRainbowConnection:Disconnect()
+            state.localChamsRainbowConnection = nil
+        end
+    end
+
+    local function toggleRainbowLocalChams(enabled)
+        state.RainbowLocalChams = enabled
+        
+        if state.localChamsRainbowConnection then
+            state.localChamsRainbowConnection:Disconnect()
+            state.localChamsRainbowConnection = nil
+        end
+        
+        if enabled then
+            state.localChamsRainbowConnection = RunService.RenderStepped:Connect(function(dt)
+                if not state.RainbowLocalChams then
+                    state.localChamsRainbowConnection:Disconnect()
+                    state.localChamsRainbowConnection = nil
+                    return
+                end
+                
+                state.localChamsHue = (state.localChamsHue + 0.25 * dt) % 1
+                rebuildLocalChams()
+            end)
+        end
+        rebuildLocalChams()
+    end
+
+    -- Local Chams Loop
+    RunService.RenderStepped:Connect(function(dt)
+        if state.localChamsDead or (not state.LocalChams and not state.RainbowLocalChams) then return end
+        state.localChamsCheckTimer = state.localChamsCheckTimer + dt
+        if state.localChamsCheckTimer >= 0.5 then
+            state.localChamsCheckTimer = 0
+            rebuildLocalChams()
+        end
+    end)
+
+    return {
+        enable = enableLocalChams,
+        disable = disableLocalChams,
+        toggleRainbow = toggleRainbowLocalChams,
+        rebuild = rebuildLocalChams
+    }
+end
+
+local localChamsSystem = setupLocalChams()
+
+-- Gun Grab Functions
+local function grabM9()
+    local Players = game:GetService("Players")
+    local LocalPlayer = Players.LocalPlayer
+    
+    -- Save original position
+    local originalPosition = LocalPlayer.Character.HumanoidRootPart.Position
+    -- Teleport to M9 position and pick it up
+    LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(813.18, 100.70, 2215.84)
+ task.wait(.15)
+    local args = {
+        workspace:WaitForChild("Prison_ITEMS"):WaitForChild("giver"):WaitForChild("M9"):WaitForChild("Meshes/M9_3")
+    }
+    game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("InteractWithItem"):InvokeServer(unpack(args))
+    -- Teleport back
+    LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(originalPosition)
+    Library:Notify("Grabbed M9", 2)
+end
+
+local function grabRemington()
+    local Players = game:GetService("Players")
+    local LocalPlayer = Players.LocalPlayer
+    
+    -- Save original position
+    local originalPosition = LocalPlayer.Character.HumanoidRootPart.Position
+    -- Teleport to Remington position and pick it up
+    LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(813.18, 100.70, 2215.84)
+ task.wait(.15)
+    local args = {
+        workspace:WaitForChild("Prison_ITEMS"):WaitForChild("giver"):WaitForChild("Remington 870"):WaitForChild("Meshes/r870_2")
+    }
+    game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("InteractWithItem"):InvokeServer(unpack(args))
+    -- Teleport back
+    LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(originalPosition)
+    Library:Notify("Grabbed Remington 870", 2)
+end
+
+local function grabAK47()
+    local Players = game:GetService("Players")
+    local LocalPlayer = Players.LocalPlayer
+    
+    -- Save original position
+    local originalPosition = LocalPlayer.Character.HumanoidRootPart.Position
+    -- Teleport to AK47 position and pick it up
+    LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(-933, 94, 2038)
+ task.wait(.15)
+    local args = {
+        workspace:WaitForChild("Prison_ITEMS"):WaitForChild("giver"):WaitForChild("AK-47"):WaitForChild("Meshes/AK47_7")
+    }
+    game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("InteractWithItem"):InvokeServer(unpack(args))
+    -- Teleport back
+    LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(originalPosition)
+    Library:Notify("Grabbed AK-47", 2)
+end
+
+-- Enhanced Bullet Tracer System (Flare-based)
+local function setupFlareTracers()
+    local function findFlareInTool(tool)
+        if not tool then return nil end
+        
+        -- Search for Flare in the tool
+        local flare = tool:FindFirstChild("Flare")
+        if flare and flare:IsA("BasePart") then
+            return flare
+        end
+        
+        -- Search in all descendants
+        for _, descendant in ipairs(tool:GetDescendants()) do
+            if descendant:IsA("BasePart") and descendant.Name == "Flare" then
+                return descendant
+            end
+        end
+        
+        return nil
+    end
+
+    local function findMuzzleInTool(tool)
+        if not tool then return nil end
+        
+        -- Search for Muzzle in the tool
+        local muzzle = tool:FindFirstChild("Muzzle")
+        if muzzle and muzzle:IsA("BasePart") then
+            return muzzle
+        end
+        
+        -- Search for Handle as fallback
+        local handle = tool:FindFirstChild("Handle")
+        if handle and handle:IsA("BasePart") then
+            return handle
+        end
+        
+        return nil
+    end
+
+    local function createTracerFromFlare(startPos, endPos, characterName)
+        local direction = endPos - startPos
+        if direction.Magnitude < 0.1 then return end
+        
+        -- Calculate the correct start position (slightly forward from muzzle)
+        local newStartPos = startPos + direction.Unit * 0.2
+        
+        if state.TracerType == "Lightning" then
+            -- Lightning effect (straight but wavy)
+            local att0 = Instance.new("Attachment")
+            att0.WorldPosition = newStartPos
+            att0.Parent = Workspace.Terrain
+            
+            local att1 = Instance.new("Attachment")
+            att1.WorldPosition = endPos
+            att1.Parent = Workspace.Terrain
+            
+            local beam = Instance.new("Beam")
+            beam.Name = "LightningTracer_" .. characterName
+            beam.Color = ColorSequence.new(state.TracerColor)
+            beam.Transparency = NumberSequence.new(0.1, 0.3)
+            beam.Width0 = state.TracerThickness
+            beam.Width1 = state.TracerWidthEnd
+            beam.LightEmission = 2.0
+            beam.FaceCamera = true
+            beam.Attachment0 = att0
+            beam.Attachment1 = att1
+            
+            -- Use lightning texture for wavy effect
+            beam.Texture = "rbxassetid://446111271"
+            beam.TextureMode = Enum.TextureMode.Wrap
+            beam.TextureSpeed = 5
+            beam.TextureLength = 2
+            
+            beam.Parent = Workspace.Terrain
+            
+            local tracerId = #state.activeTracers + 1
+            table.insert(state.activeTracers, {att0, att1, beam, tracerId})
+            
+            local startTime = tick()
+            local lifetime = state.TracerLifetime
+            local conn
+            conn = RunService.Heartbeat:Connect(function()
+                local elapsed = tick() - startTime
+                local alpha = math.clamp(elapsed / lifetime, 0, 1)
+                local fade = 0.1 + (alpha * 0.9)
+                
+                if beam and beam.Parent then
+                    beam.Transparency = NumberSequence.new(fade)
+                end
+                
+                if alpha >= 1 then
+                    -- Clean up this specific tracer
+                    if att0 and att0.Parent then att0:Destroy() end
+                    if att1 and att1.Parent then att1:Destroy() end
+                    if beam and beam.Parent then beam:Destroy() end
+                    if conn then conn:Disconnect() end
+                    
+                    -- Remove from active tracers
+                    for i = #state.activeTracers, 1, -1 do
+                        if state.activeTracers[i][4] == tracerId then
+                            table.remove(state.activeTracers, i)
+                            break
+                        end
+                    end
+                end
+            end)
+            
+        else
+            -- Normal straight tracer
+            local att0 = Instance.new("Attachment")
+            att0.WorldPosition = newStartPos
+            att0.Parent = Workspace.Terrain
+            
+            local att1 = Instance.new("Attachment")
+            att1.WorldPosition = endPos
+            att1.Parent = Workspace.Terrain
+            
+            local beam = Instance.new("Beam")
+            beam.Name = "NormalTracer_" .. characterName
+            beam.Color = ColorSequence.new(state.TracerColor)
+            beam.Transparency = NumberSequence.new(0.1, 0.3)
+            beam.Width0 = state.TracerThickness
+            beam.Width1 = state.TracerWidthEnd
+            beam.LightEmission = 1.5
+            beam.FaceCamera = true
+            beam.Attachment0 = att0
+            beam.Attachment1 = att1
+            beam.Texture = "rbxassetid://607996753"
+            beam.TextureMode = Enum.TextureMode.Stretch
+            beam.TextureSpeed = 12
+            beam.TextureLength = 3
+            beam.Parent = Workspace.Terrain
+            
+            local tracerId = #state.activeTracers + 1
+            table.insert(state.activeTracers, {att0, att1, beam, tracerId})
+            
+            local startTime = tick()
+            local lifetime = state.TracerLifetime
+            local conn
+            conn = RunService.Heartbeat:Connect(function()
+                local elapsed = tick() - startTime
+                local alpha = math.clamp(elapsed / lifetime, 0, 1)
+                local fade = 0.1 + (alpha * 0.9)
+                
+                if beam and beam.Parent then
+                    beam.Transparency = NumberSequence.new(fade)
+                end
+                
+                if alpha >= 1 then
+                    -- Clean up this specific tracer
+                    if att0 and att0.Parent then att0:Destroy() end
+                    if att1 and att1.Parent then att1:Destroy() end
+                    if beam and beam.Parent then beam:Destroy() end
+                    if conn then conn:Disconnect() end
+                    
+                    -- Remove from active tracers
+                    for i = #state.activeTracers, 1, -1 do
+                        if state.activeTracers[i][4] == tracerId then
+                            table.remove(state.activeTracers, i)
+                            break
+                        end
+                    end
+                end
+            end)
+        end
+    end
+
+    local function monitorFlareForCharacter(character)
+        if not character then return end
+        
+        local characterName = character.Name
+        
+        -- Monitor all tools in the character
+        for _, tool in ipairs(character:GetChildren()) do
+            if tool:IsA("Tool") then
+                local flare = findFlareInTool(tool)
+                if flare then
+                    
+                    -- Monitor the flare's state
+                    local lastFlareState = flare.Enabled
+                    
+                    flare:GetPropertyChangedSignal("Enabled"):Connect(function()
+                        if state.TracersEnabled and flare.Enabled and not lastFlareState then
+                            
+                            -- Get muzzle position from the tool
+                            local muzzle = findMuzzleInTool(tool)
+                            local startPos = muzzle and muzzle.WorldPosition or flare.WorldPosition
+                            
+                            -- Calculate end position (raycast or use direction)
+                            local direction = (flare.CFrame.LookVector * 1000)
+                            local endPos = startPos + direction
+                            
+                            -- Create tracer
+                            task.spawn(createTracerFromFlare, startPos, endPos, characterName)
+                        end
+                        lastFlareState = flare.Enabled
+                    end)
+                end
+            end
+        end
+        
+        -- Monitor for new tools being added
+        character.ChildAdded:Connect(function(child)
+            if child:IsA("Tool") then
+                wait(0.1) -- Wait for tool to fully load
+                local flare = findFlareInTool(child)
+                if flare then
+                    
+                    local lastFlareState = flare.Enabled
+                    
+                    flare:GetPropertyChangedSignal("Enabled"):Connect(function()
+                        if state.TracersEnabled and flare.Enabled and not lastFlareState then
+                            
+                            local muzzle = findMuzzleInTool(child)
+                            local startPos = muzzle and muzzle.WorldPosition or flare.WorldPosition
+                            local direction = (flare.CFrame.LookVector * 1000)
+                            local endPos = startPos + direction
+                            
+                            task.spawn(createTracerFromFlare, startPos, endPos, characterName)
+                        end
+                        lastFlareState = flare.Enabled
+                    end)
+                end
+            end
+        end)
+    end
+
+    -- Monitor all players
+    local function monitorAllPlayers()
+        -- Monitor existing players
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player.Character then
+                monitorFlareForCharacter(player.Character)
+            end
+            player.CharacterAdded:Connect(function(character)
+                monitorFlareForCharacter(character)
+            end)
+        end
+        
+        -- Monitor new players
+        Players.PlayerAdded:Connect(function(player)
+            player.CharacterAdded:Connect(function(character)
+                monitorFlareForCharacter(character)
+            end)
+        end)
+    end
+
+    return {
+        startMonitoring = monitorAllPlayers,
+        updateAppearance = function()
+            for _, set in ipairs(state.activeTracers) do
+                local beam = set[3]
+                if beam and beam.Parent then
+                    beam.Color = ColorSequence.new(state.TracerColor)
+                    beam.Width0 = state.TracerThickness
+                    beam.Width1 = state.TracerWidthEnd
+                end
+            end
+        end,
+        disable = function()
+            state.TracersEnabled = false
+            for _, set in ipairs(state.activeTracers) do
+                for _, obj in ipairs(set) do
+                    if obj and obj.Parent then pcall(obj.Destroy, obj) end
+                end
+            end
+            state.activeTracers = {}
+        end
+    }
+end
+
+local flareTracerSystem = setupFlareTracers()
+
+-- EXECUTOR COMPATIBILITY CHECK
+local function checkExecutorCompatibility()
+    state.ExecutorName = identifyexecutor and identifyexecutor() or getexecutorname and getexecutorname() or "Unknown"
+    if not (hookmetamethod and getnamecallmethod and checkcaller) then
+        state.SilentAimSupported = false
+        if state.NotificationsEnabled then
+    
+        end
+        return false
+    end
+    return true
+end
+
+-- SILENT AIM SYSTEM WITH FOV OUTLINE
+local function initializeSilentAim(silentMode)
+    if not checkExecutorCompatibility() then
+        state.SilentAimLoaded = false
+        return
+    end
+    if state.SilentAimInitialized then
+        return true
+    end
+
+    local success, err = pcall(function()
+        if not game:IsLoaded() then
+            game.Loaded:Wait()
+        end
+        if not syn or not (protectgui and type(protectgui) == "function") then
+            getgenv().protectgui = function() end
+        end
+        local SilentAimSettings = {
+            Enabled = false,
+            ClassName = "Silent",
+            ToggleKey = "RightAlt",
+            TeamCheck = false,
+            VisibleCheck = false,
+            TargetPart = "Head",
+            SilentAimMethod = "Raycast",
+            FOVRadius = 360,
+            FOVVisible = true,
+            ShowSilentAimTarget = false,
+            MouseHitPrediction = false,
+            MouseHitPredictionAmount = 0.165,
+            HitChance = 100
+        }
+        getgenv().SilentAimSettings = SilentAimSettings
+        local MainFileName = "UniversalSilentAim"
+        local GetChildren = game.GetChildren
+        local GetPlayers = Players.GetPlayers
+        local WorldToScreen = Camera.WorldToScreenPoint
+        local WorldToViewportPoint = Camera.WorldToViewportPoint
+        local GetPartsObscuringTarget = Camera.GetPartsObscuringTarget
+        local FindFirstChild = game.FindFirstChild
+        local RenderStepped = RunService.RenderStepped
+        local GetMouseLocation = UserInputService.GetMouseLocation
+        local resume = coroutine.resume
+        local create = coroutine.create
+        local ValidTargetParts = {"Head", "HumanoidRootPart"}
+        local PredictionAmount = 0.165
+        local mouse_box, fov_circle, fov_circle_outline
+        
+        pcall(function()
+            -- Create FOV outline circle (black, thicker)
+            fov_circle_outline = Drawing.new("Circle")
+            fov_circle_outline.Thickness = 5 -- Thicker line for the outline
+            fov_circle_outline.NumSides = 100
+            fov_circle_outline.Radius = SilentAimSettings.FOVRadius
+            fov_circle_outline.Filled = false
+            fov_circle_outline.Visible = SilentAimSettings.FOVVisible
+            fov_circle_outline.ZIndex = 998 -- Behind the main circle
+            fov_circle_outline.Transparency = 1
+            fov_circle_outline.Color = Color3.fromRGB(0, 0, 0) -- Black outline
+            state.FOVCircleOutline = fov_circle_outline
+
+            -- Create main FOV circle (white, thinner)
+            fov_circle = Drawing.new("Circle")
+            fov_circle.Thickness = 3 -- Thinner line for the main circle
+            fov_circle.NumSides = 100
+            fov_circle.Radius = SilentAimSettings.FOVRadius
+            fov_circle.Filled = false
+            fov_circle.Visible = SilentAimSettings.FOVVisible
+            fov_circle.ZIndex = 999
+            fov_circle.Transparency = 1
+            fov_circle.Color = Color3.fromRGB(230, 230, 250)
+            state.FOVCircle = fov_circle
+
+            mouse_box = Drawing.new("Square")
+            mouse_box.Visible = SilentAimSettings.ShowSilentAimTarget
+            mouse_box.ZIndex = 999
+            mouse_box.Color = Color3.fromRGB(230, 230, 250)
+            mouse_box.Thickness = 20
+            mouse_box.Size = Vector2.new(20, 20)
+            mouse_box.Filled = true
+            state.SilentAimMouseBox = mouse_box
+        end)
+        local ExpectedArguments = {
+            FindPartOnRayWithIgnoreList = {
+                ArgCountRequired = 3,
+                Args = {"Instance", "Ray", "table", "boolean", "boolean"}
+            },
+            FindPartOnRayWithWhitelist = {
+                ArgCountRequired = 3,
+                Args = {"Instance", "Ray", "table", "boolean"}
+            },
+            FindPartOnRay = {
+                ArgCountRequired = 2,
+                Args = {"Instance", "Ray", "Instance", "boolean", "boolean"}
+            },
+            Raycast = {
+                ArgCountRequired = 3,
+                Args = {"Instance", "Vector3", "Vector3", "RaycastParams"}
+            }
+        }
+        function CalculateChance(Percentage)
+            Percentage = math.floor(Percentage)
+            local chance = math.floor(Random.new().NextNumber(Random.new(), 0, 1) * 100) / 100
+            return chance <= Percentage / 100
+        end
+        pcall(function()
+            if not isfolder or (isfolder and not isfolder(MainFileName)) then
+                if makefolder then
+                    makefolder(MainFileName)
+                end
+            end
+            if not isfolder or (isfolder and not isfolder(string.format("%s/%s", MainFileName, tostring(game.PlaceId)))) then
+                if makefolder then
+                    makefolder(string.format("%s/%s", MainFileName, tostring(game.PlaceId)))
+                end
+            end
+        end)
+        local Files = {}
+        pcall(function()
+            if listfiles then
+                Files = listfiles(string.format("%s/%s", "UniversalSilentAim", tostring(game.PlaceId)))
+            end
+        end)
+        local function GetFiles()
+            local out = {}
+            for i = 1, #Files do
+                local file = Files[i]
+                if file:sub(-4) == '.lua' then
+                    local pos = file:find('.lua', 1, true)
+                    local start = pos
+                    local char = file:sub(pos, pos)
+                    while char ~= '/' and char ~= '\\' and char ~= '' do
+                        pos = pos - 1
+                        char = file:sub(pos, pos)
+                    end
+                    if char == '/' or char == '\\' then
+                        table.insert(out, file:sub(pos + 1, start - 1))
+                    end
+                end
+            end
+            return out
+        end
+        local function UpdateFile(FileName)
+            assert(FileName or FileName == "string", "oopsies")
+            if writefile then
+                writefile(string.format("%s/%s/%s.lua", MainFileName, tostring(game.PlaceId), FileName), game:GetService("HttpService"):JSONEncode(SilentAimSettings))
+            end
+        end
+        local function LoadFile(FileName)
+            assert(FileName or FileName == "string", "oopsies")
+            local File = string.format("%s/%s/%s.lua", MainFileName, tostring(game.PlaceId), FileName)
+            if readfile then
+                local ConfigData = game:GetService("HttpService"):JSONDecode(readfile(File))
+                for Index, Value in next, ConfigData do
+                    SilentAimSettings[Index] = Value
+                end
+            end
+        end
+        local function getPositionOnScreen(Vector)
+            local Vec3, OnScreen = WorldToScreen(Camera, Vector)
+            return Vector2.new(Vec3.X, Vec3.Y), OnScreen
+        end
+        local function ValidateArguments(Args, RayMethod)
+            local Matches = 0
+            if #Args < RayMethod.ArgCountRequired then
+                return false
+            end
+            for Pos, Argument in next, Args do
+                if typeof(Argument) == RayMethod.Args[Pos] then
+                    Matches = Matches + 1
+                end
+            end
+            return Matches >= RayMethod.ArgCountRequired
+        end
+        local function getDirection(Origin, Position)
+            return (Position - Origin).Unit * 1000
+        end
+        local function getMousePosition()
+            if state.IsMobile then
+                local viewportSize = Camera.ViewportSize
+                return Vector2.new(viewportSize.X / 2, viewportSize.Y / 2)
+            else
+                return GetMouseLocation(UserInputService)
+            end
+        end
+        local function IsPlayerVisible(Player)
+            local PlayerCharacter = Player.Character
+            local LocalPlayerCharacter = LocalPlayer.Character
+            if not (PlayerCharacter or LocalPlayerCharacter) then return end
+            local PlayerRoot = FindFirstChild(PlayerCharacter, SilentAimSettings.TargetPart) or FindFirstChild(PlayerCharacter, "HumanoidRootPart")
+            if not PlayerRoot then return end
+            local CastPoints, IgnoreList = {PlayerRoot.Position, LocalPlayerCharacter, PlayerCharacter}, {LocalPlayerCharacter, PlayerCharacter}
+            local ObscuringObjects = #GetPartsObscuringTarget(Camera, CastPoints, IgnoreList)
+            return ((ObscuringObjects == 0 and true) or (ObscuringObjects > 0 and false))
+        end
+        local function getClosestPlayer()
+            local targetPart = state.SilentAimTargetPart or SilentAimSettings.TargetPart
+            if not targetPart then return end
+            local Closest
+            local DistanceToMouse
+            local screenCenter
+            if state.IsMobile then
+                local viewportSize = Camera.ViewportSize
+                screenCenter = Vector2.new(viewportSize.X / 2, viewportSize.Y / 2)
+            else
+                screenCenter = getMousePosition()
+            end
+            for _, Player in next, GetPlayers(Players) do
+                if Player == LocalPlayer then continue end
+                if SilentAimSettings.TeamCheck and Player.Team == LocalPlayer.Team then continue end
+                local Character = Player.Character
+                if not Character then continue end
+                if SilentAimSettings.VisibleCheck and not IsPlayerVisible(Player) then continue end
+                local HumanoidRootPart = FindFirstChild(Character, "HumanoidRootPart")
+                local Humanoid = FindFirstChild(Character, "Humanoid")
+                if not HumanoidRootPart or not Humanoid or Humanoid and Humanoid.Health <= 0 then continue end
+                local ScreenPosition, OnScreen = getPositionOnScreen(HumanoidRootPart.Position)
+                if not OnScreen then continue end
+                local Distance = (screenCenter - ScreenPosition).Magnitude
+                if Distance <= (DistanceToMouse or state.SilentAimFOV or SilentAimSettings.FOVRadius or 2000) then
+                    if targetPart == "Random" then
+                        Closest = Character[ValidTargetParts[math.random(1, #ValidTargetParts)]]
+                    else
+                        Closest = Character[targetPart]
+                    end
+                    DistanceToMouse = Distance
+                end
+            end
+            return Closest
+        end
+        pcall(function()
+            resume(create(function()
+                RenderStepped:Connect(function()
+                    if SilentAimSettings.ShowSilentAimTarget and SilentAimSettings.Enabled then
+                        if getClosestPlayer() then
+                            local Root = getClosestPlayer().Parent.PrimaryPart or getClosestPlayer()
+                            local RootToViewportPoint, IsOnScreen = WorldToViewportPoint(Camera, Root.Position)
+                            if mouse_box then
+                                mouse_box.Visible = IsOnScreen
+                                mouse_box.Position = Vector2.new(RootToViewportPoint.X, RootToViewportPoint.Y)
+                            end
+                        elseif mouse_box then
+                            mouse_box.Visible = false
+                            mouse_box.Position = Vector2.new()
+                        end
+                    end
+                    if state.SilentAimFOVVisible and fov_circle and fov_circle_outline then
+                        local isVisible = state.SilentAimFOVVisible and SilentAimSettings.Enabled
+                        
+                        -- Update both circles' visibility
+                        fov_circle.Visible = isVisible
+                        fov_circle_outline.Visible = isVisible
+                        
+                        -- Update both circles' radius
+                        fov_circle.Radius = state.SilentAimFOV
+                        fov_circle_outline.Radius = state.SilentAimFOV
+                        
+                        -- Update both circles' position
+                        if state.IsMobile then
+                            local viewportSize = Camera.ViewportSize
+                            fov_circle.Position = Vector2.new(viewportSize.X / 2, viewportSize.Y / 2)
+                            fov_circle_outline.Position = Vector2.new(viewportSize.X / 2, viewportSize.Y / 2)
+                        else
+                            local mousePos = getMousePosition()
+                            fov_circle.Position = mousePos
+                            fov_circle_outline.Position = mousePos
+                        end
+                    elseif fov_circle and fov_circle_outline then
+                        fov_circle.Visible = false
+                        fov_circle_outline.Visible = false
+                    end
+                end)
+            end))
+        end)
+        local oldNamecall
+        oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(...)
+            local Method = getnamecallmethod()
+            local Arguments = {...}
+            local self = Arguments[1]
+            local chance = CalculateChance(state.SilentAimHitChance or SilentAimSettings.HitChance)
+            if SilentAimSettings.Enabled and self == workspace and not checkcaller() and chance == true then
+                if Method == "FindPartOnRayWithIgnoreList" and SilentAimSettings.SilentAimMethod == Method then
+                    if ValidateArguments(Arguments, ExpectedArguments.FindPartOnRayWithIgnoreList) then
+                        local A_Ray = Arguments[2]
+                        local HitPart = getClosestPlayer()
+                        if HitPart then
+                            local Origin = A_Ray.Origin
+                            local Direction = getDirection(Origin, HitPart.Position)
+                            Arguments[2] = Ray.new(Origin, Direction)
+                            return oldNamecall(unpack(Arguments))
+                        end
+                    end
+                elseif Method == "FindPartOnRayWithWhitelist" and SilentAimSettings.SilentAimMethod == Method then
+                    if ValidateArguments(Arguments, ExpectedArguments.FindPartOnRayWithWhitelist) then
+                        local A_Ray = Arguments[2]
+                        local HitPart = getClosestPlayer()
+                        if HitPart then
+                            local Origin = A_Ray.Origin
+                            local Direction = getDirection(Origin, HitPart.Position)
+                            Arguments[2] = Ray.new(Origin, Direction)
+                            return oldNamecall(unpack(Arguments))
+                        end
+                    end
+                elseif (Method == "FindPartOnRay" or Method == "findPartOnRay") and SilentAimSettings.SilentAimMethod:lower() == Method:lower() then
+                    if ValidateArguments(Arguments, ExpectedArguments.FindPartOnRay) then
+                        local A_Ray = Arguments[2]
+                        local HitPart = getClosestPlayer()
+                        if HitPart then
+                            local Origin = A_Ray.Origin
+                            local Direction = getDirection(Origin, HitPart.Position)
+                            Arguments[2] = Ray.new(Origin, Direction)
+                            return oldNamecall(unpack(Arguments))
+                        end
+                    end
+                elseif Method == "Raycast" and SilentAimSettings.SilentAimMethod == Method then
+                    if ValidateArguments(Arguments, ExpectedArguments.Raycast) then
+                        local A_Origin = Arguments[2]
+                        local HitPart = getClosestPlayer()
+                        if HitPart then
+                            Arguments[3] = getDirection(A_Origin, HitPart.Position)
+                            return oldNamecall(unpack(Arguments))
+                        end
+                    end
+                end
+            end
+            return oldNamecall(...)
+        end))
+        local oldIndex = nil
+        oldIndex = hookmetamethod(game, "__index", newcclosure(function(self, Index)
+            if self == Mouse and not checkcaller() and SilentAimSettings.Enabled and SilentAimSettings.SilentAimMethod == "Mouse.Hit/Target" and getClosestPlayer() then
+                local HitPart = getClosestPlayer()
+                if Index == "Target" or Index == "target" then
+                    return HitPart
+                elseif Index == "Hit" or Index == "hit" then
+                    return ((SilentAimSettings.MouseHitPrediction and (HitPart.CFrame + (HitPart.Velocity * PredictionAmount))) or (not SilentAimSettings.MouseHitPrediction and HitPart.CFrame))
+                elseif Index == "X" or Index == "x" then
+                    return self.X
+                elseif Index == "Y" or Index == "y" then
+                    return self.Y
+                elseif Index == "UnitRay" then
+                    return Ray.new(self.Origin, (self.Hit - self.Origin).Unit)
+                end
+            end
+            return oldIndex(self, Index)
+        end))
+        function toggleSilentAim(enabled, silent)
+            SilentAimSettings.Enabled = enabled
+            state.SilentAimEnabled = enabled
+            if fov_circle and fov_circle_outline then
+                fov_circle.Visible = enabled and state.SilentAimFOVVisible
+                fov_circle_outline.Visible = enabled and state.SilentAimFOVVisible
+            end
+            if mouse_box then
+                mouse_box.Visible = enabled and SilentAimSettings.ShowSilentAimTarget
+            end
+            if not silent and state.NotificationsEnabled then
+                Library:Notify("Silent Aim " .. (enabled and "Enabled" or "Disabled"), 2)
+            end
+        end
+        function updateSilentAimSettings()
+            SilentAimSettings.FOVRadius = state.SilentAimFOV
+            SilentAimSettings.FOVVisible = state.SilentAimFOVVisible
+            SilentAimSettings.TargetPart = state.SilentAimTargetPart
+            SilentAimSettings.HitChance = state.SilentAimHitChance
+        end
+        state.SilentAimLoaded = true
+        state.SilentAimInitialized = true
+        if not silentMode and state.NotificationsEnabled then
+            Library:Notify(string.format("Silent Aim loaded successfully on %s", state.ExecutorName), 3)
+        end
+    end)
+    if not success then
+        state.SilentAimSupported = false
+        state.SilentAimLoaded = false
+        if not silentMode and state.NotificationsEnabled then
+            Library:Notify("Silent Aim failed to load. Using fallback aimbot.", 5)
+        end
+    end
+    return success
+end
+
+task.spawn(function()
+    initializeSilentAim(true)
+end)
+
+-- FALLBACK AIMBOT SYSTEM WITH PROPER SMOOTHING
+local function initializeFallbackAimbot()
+    if state.SilentAimLoaded then return end
+    
+    local FallbackAim = {
+        Enabled = false,
+        TargetPart = "Head",
+        FOV = 360,
+        LastTarget = nil,
+        CurrentLookVector = nil,
+        SmoothingFactor = 1.0,
+        LastSmoothingUpdate = 0
+    }
+    local function getClosestTarget()
+        local enemies = getEnemies()
+        local center
+        if state.IsMobile then
+            local viewportSize = Camera.ViewportSize
+            center = Vector2.new(viewportSize.X/2, viewportSize.Y/2)
+        else
+            center = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
+        end
+        local best, dist = nil, math.huge
+        for _, model in ipairs(enemies) do
+            local targetPart
+            if state.SilentAimTargetPart == "Random" then
+                targetPart = model:FindFirstChild("Head") or model:FindFirstChild("HumanoidRootPart")
+            else
+                targetPart = model:FindFirstChild(state.SilentAimTargetPart)
+            end
+            
+            local hum = model:FindFirstChildOfClass('Humanoid')
+            if targetPart and hum and hum.Health > 0 then
+                local sp, on = Camera:WorldToViewportPoint(targetPart.Position)
+                if on then
+                    local d = (Vector2.new(sp.X, sp.Y) - center).Magnitude
+                    if d < dist and d <= FallbackAim.FOV then
+                        dist = d
+                        best = targetPart
+                    end
+                end
+            end
+        end
+        return best
+    end
+    local function calculateSmoothing()
+        local smoothing = math.clamp(state.AimbotSmoothing, 1, 20)
+        -- Convert 1-20 to 0.05-1.0 range (1 = 1.0, 20 = 0.05)
+        -- This makes higher values = more smoothing (slower movement)
+        return 1 / (smoothing * 0.5)
+    end
+    local function aimAtTarget()
+        if not FallbackAim.Enabled then return end
+        
+        -- Update smoothing factor if it changed
+        local now = tick()
+        if now - FallbackAim.LastSmoothingUpdate > 0.1 then
+            FallbackAim.SmoothingFactor = calculateSmoothing()
+            FallbackAim.LastSmoothingUpdate = now
+        end
+        
+        local targetPart = getClosestTarget()
+        if not targetPart then 
+            FallbackAim.LastTarget = nil
+            FallbackAim.CurrentLookVector = nil
+            return 
+        end
+        
+        local pos = Camera.CFrame.Position
+        local targetPos = targetPart.Position
+        
+        local desiredLook = (targetPos - pos).Unit
+        
+        -- Initialize current look vector if not set
+        if not FallbackAim.CurrentLookVector then
+            FallbackAim.CurrentLookVector = Camera.CFrame.LookVector
+        end
+        
+        -- Apply PROPER smoothing using lerp with the smoothing factor
+        -- Higher smoothing factor = slower movement toward target
+        local smoothedLook = FallbackAim.CurrentLookVector:Lerp(desiredLook, FallbackAim.SmoothingFactor)
+        FallbackAim.CurrentLookVector = smoothedLook
+        
+        -- Apply the smoothed look direction
+        Camera.CFrame = CFrame.new(pos, pos + smoothedLook)
+        
+        FallbackAim.LastTarget = targetPos
+    end
+    RunService.Heartbeat:Connect(function()
+        if state.SilentAimLoaded and state.SilentAimEnabled then return end
+        if state.AimbotEnabled and (state.AlwaysOnAimbot or Options.AimbotKey:GetState()) then
+            FallbackAim.Enabled = true
+            FallbackAim.TargetPart = state.SilentAimTargetPart or "Head"
+            FallbackAim.FOV = state.SilentAimFOV or 360
+            aimAtTarget()
+        else
+            FallbackAim.Enabled = false
+            FallbackAim.LastTarget = nil
+            FallbackAim.CurrentLookVector = nil
+        end
+    end)
+end
+
+-- DRAWING UTILS
+local function NewSquare(thickness, color)
+    local sq = Drawing.new("Square")
+    sq.Visible = false
+    sq.Color = color
+    sq.Thickness = thickness
+    sq.Filled = false
+    sq.Transparency = 1
+    return sq
+end
+
+local function NewOutlinedSquare(mainThickness, mainColor, outlineThickness, outlineColor)
+    local mainSquare = Drawing.new("Square")
+    mainSquare.Visible = false
+    mainSquare.Color = mainColor
+    mainSquare.Thickness = mainThickness
+    mainSquare.Filled = false
+    mainSquare.Transparency = 1
+    local outlineSquare = Drawing.new("Square")
+    outlineSquare.Visible = false
+    outlineSquare.Color = outlineColor
+    outlineSquare.Thickness = outlineThickness
+    outlineSquare.Filled = false
+    outlineSquare.Transparency = 1
+    return {main = mainSquare, outline = outlineSquare}
+end
+
+local function DestroyDrawing(obj)
+    if obj and obj.Remove then
+        pcall(obj.Remove, obj)
+    end
+end
+
+local function DestroyESP(model)
+    local lib = state.espObjects[model]
+    if lib then
+        for _, obj in pairs(lib) do
+            if type(obj) == "table" and obj.main and obj.outline then
+                DestroyDrawing(obj.main)
+                DestroyDrawing(obj.outline)
+            else
+                DestroyDrawing(obj)
+            end
+        end
+        state.espObjects[model] = nil
+    end
+    if state.highlights[model] then
+        state.highlights[model]:Destroy()
+        state.highlights[model] = nil
+    end
+    state.rainbowHue[model] = nil
+end
+
+-- ENEMY DETECTION (Humanoid/HumanoidRootPart based)
+local function getEnemies()
+    local enemies = {}
+    
+    -- Get local player team
+    local localPlayerTeam = LocalPlayer.Team
+    
+    -- Scan all players for enemies
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character then
+            -- Team check - if teams are enabled
+            if state.TeamCheck and player.Team == localPlayerTeam then
+                continue
+            end
+            
+            local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+            local humanoidRootPart = player.Character:FindFirstChild("HumanoidRootPart")
+            
+            if humanoid and humanoidRootPart and humanoid.Health > 0 then
+                table.insert(enemies, player.Character)
+            end
+        end
+    end
+    
+    -- Also check workspace for characters with humanoids (for NPCs)
+    for _, model in ipairs(Workspace:GetChildren()) do
+        if model:IsA("Model") and model ~= LocalPlayer.Character then
+            local humanoid = model:FindFirstChildOfClass("Humanoid")
+            local humanoidRootPart = model:FindFirstChild("HumanoidRootPart")
+            
+            if humanoid and humanoidRootPart and humanoid.Health > 0 then
+                -- Skip if this is another player's character
+                local isPlayerCharacter = false
+                for _, player in ipairs(Players:GetPlayers()) do
+                    if player.Character == model then
+                        isPlayerCharacter = true
+                        break
+                    end
+                end
+                
+                if not isPlayerCharacter then
+                    table.insert(enemies, model)
+                end
+            end
+        end
+    end
+    
+    return enemies
+end
+
+local function updateCompleteESP()
+
+    --------------------------------------------------------------------
+    -- CLEANUP WHEN ESP DISABLED
+    --------------------------------------------------------------------
+    local function FullCleanup()
+        for model, lib in pairs(state.espObjects) do
+            for _, obj in pairs(lib) do
+                if typeof(obj) == "table" then
+                    if obj.main then pcall(function() obj.main:Remove() end) end
+                    if obj.outline then pcall(function() obj.outline:Remove() end) end
+                else
+                    pcall(function() obj:Remove() end)
+                end
+            end
+        end
+        state.espObjects = {}
+
+        for model, hl in pairs(state.highlights) do
+            if hl then pcall(function() hl:Destroy() end) end
+        end
+
+        state.highlights = {}
+        state.rainbowHue = {}
+    end
+
+    --------------------------------------------------------------------
+    -- ESP CHECK
+    --------------------------------------------------------------------
+    if not state.ESPEnabled then
+        FullCleanup()
+        return
+    end
+
+    --------------------------------------------------------------------
+    -- FIND ONLY PLAYER CHARACTERS (NO NPCS)
+    --------------------------------------------------------------------
+    local enemies = {}
+
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer then
+            local character = plr.Character
+            if character then
+                local hum = character:FindFirstChildOfClass("Humanoid")
+                local hrp = character:FindFirstChild("HumanoidRootPart")
+                local head = character:FindFirstChild("Head")
+                if hum and hrp and head and hum.Health > 0 then
+                    table.insert(enemies, character)
+                end
+            end
+        end
+    end
+
+    if #enemies == 0 then
+        FullCleanup()
+        return
+    end
+
+    local seen = {}
+
+    --------------------------------------------------------------------
+    -- MAIN LOOP
+    --------------------------------------------------------------------
+
+    for _, model in ipairs(enemies) do
+        local hum = model:FindFirstChildOfClass("Humanoid")
+        local hrp = model:FindFirstChild("HumanoidRootPart")
+        local head = model:FindFirstChild("Head")
+
+        if hum and hrp and head and hum.Health > 0 then
+
+            seen[model] = true
+            local pos, onScreen = Camera:WorldToViewportPoint(hrp.Position)
+            local distance = (Camera.CFrame.Position - hrp.Position).Magnitude
+
+            if onScreen and distance <= state.MaxDistance then
+
+                -------------------------------------------------------------
+                -- CREATE ESP LIB IF NOT EXISTS
+                -------------------------------------------------------------
+                if not state.espObjects[model] then
+                    state.espObjects[model] = {}
+                end
+
+                local lib = state.espObjects[model]
+
+                -- CREATE TRACERS IF THEY DON'T EXIST (ALWAYS AVAILABLE)
+                if not lib.tracer then
+                    lib.blacktracer = NewLine(state.Tracer_Thickness + 1, Color3.new(0,0,0))
+                    lib.tracer = NewLine(state.Tracer_Thickness, state.Tracer_Color)
+                end
+
+                -- CREATE BOX COMPONENTS BASED ON CURRENT MODE
+                if state.BoxesESP then
+                    if not lib.box then
+                        lib.black = NewQuad(2, Color3.new(0,0,0))
+                        lib.box = NewQuad(1, state.BoxesBox_Color)
+                    end
+                    -- Remove outlined box if it exists from previous mode
+                    if lib.box and lib.box.main then
+                        pcall(function() lib.box.main:Remove() end)
+                        pcall(function() lib.box.outline:Remove() end)
+                        lib.box = nil
+                    end
+                else
+                    if not lib.box then
+                        lib.box = NewOutlinedSquare(
+                            state.Box_Thickness,
+                            state.Box_Color,
+                            state.Box_Outline_Thickness,
+                            state.Box_Outline_Color
+                        )
+                    end
+                    -- Remove quad box if it exists from previous mode
+                    if lib.black then
+                        pcall(function() lib.black:Remove() end)
+                        lib.black = nil
+                    end
+                    if lib.box and not lib.box.main then -- If it's a quad box from previous mode
+                        pcall(function() lib.box:Remove() end)
+                        lib.box = NewOutlinedSquare(
+                            state.Box_Thickness,
+                            state.Box_Color,
+                            state.Box_Outline_Thickness,
+                            state.Box_Outline_Color
+                        )
+                    end
+                end
+
+                -- CREATE OTHER COMPONENTS IF THEY DON'T EXIST
+                if not lib.healthbar then
+                    lib.healthbar = NewLine(3, Color3.new(0,0,0))
+                end
+                if not lib.greenhealth then
+                    lib.greenhealth = NewLine(1.5, Color3.new(0,0,0))
+                end
+                if not lib.name then
+                    lib.name = NewText()
+                    lib.name.Size = 13
+                    lib.name.Center = true
+                    lib.name.Outline = true
+                    lib.name.OutlineColor = Color3.new(0,0,0)
+                end
+                if not lib.distance then
+                    lib.distance = NewText()
+                    lib.distance.Size = 13
+                    lib.distance.Center = true
+                    lib.distance.Outline = true
+                    lib.distance.OutlineColor = Color3.new(0,0,0)
+                end
+
+                ----------------------------------------------------------------
+                -- ⭐ TRACERS WITH OUTLINE (ALWAYS AVAILABLE)
+                ----------------------------------------------------------------
+                if state.Tracer_Enabled then
+                    local from = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y)
+                    local toX, toY
+
+                    if state.BoxesESP then
+                        local topPos = head.Position + Vector3.new(0, hum.HipHeight + 1.10, 0)
+                        local bottomPos = hrp.Position - Vector3.new(0, 2.8, 0)
+                        local top2D = Camera:WorldToViewportPoint(topPos)
+                        local bottom2D = Camera:WorldToViewportPoint(bottomPos)
+                        local h = math.abs(top2D.Y - bottom2D.Y)
+                        local w = h * 0.58
+                        local center = Vector2.new(pos.X, (top2D.Y + bottom2D.Y) / 2)
+                        
+                        toX = center.X
+                        toY = bottom2D.Y
+                    else
+                        local top = Camera:WorldToViewportPoint(hrp.Position + Vector3.new(0,3,0))
+                        local bottom = Camera:WorldToViewportPoint(hrp.Position - Vector3.new(0,3,0))
+                        local h = math.abs(top.Y - bottom.Y)
+                        
+                        toX = pos.X
+                        toY = pos.Y + h/2
+                    end
+
+                    -- Update tracer positions
+                    lib.tracer.From = from
+                    lib.tracer.To = Vector2.new(toX, toY)
+                    lib.tracer.Visible = true
+                    lib.tracer.Color = state.BoxesESP and state.BoxesTracer_Color or state.Tracer_Color
+
+                    lib.blacktracer.From = from
+                    lib.blacktracer.To = Vector2.new(toX, toY)
+                    lib.blacktracer.Visible = true
+                else
+                    if lib.tracer then lib.tracer.Visible = false end
+                    if lib.blacktracer then lib.blacktracer.Visible = false end
+                end
+
+                ----------------------------------------------------------------
+                -- ⭐ BOXES (QUAD ESP)
+                ----------------------------------------------------------------
+                if state.BoxesESP then
+
+                    local topPos = head.Position + Vector3.new(0, hum.HipHeight + 1.10, 0)
+                    local bottomPos = hrp.Position - Vector3.new(0, 2.8, 0)
+
+                    local top2D = Camera:WorldToViewportPoint(topPos)
+                    local bottom2D = Camera:WorldToViewportPoint(bottomPos)
+
+                    local h = math.abs(top2D.Y - bottom2D.Y)
+                    local w = h * 0.58
+                    local center = Vector2.new(pos.X, (top2D.Y + bottom2D.Y) / 2)
+
+                    local function Quad(q)
+                        q.PointA = Vector2.new(center.X - w/2, top2D.Y)
+                        q.PointB = Vector2.new(center.X + w/2, top2D.Y)
+                        q.PointC = Vector2.new(center.X + w/2, bottom2D.Y)
+                        q.PointD = Vector2.new(center.X - w/2, bottom2D.Y)
+                    end
+
+                    if state.BoxESP_Enabled then
+                        if lib.box then
+                            Quad(lib.box)
+                            lib.box.Visible = true
+                            lib.box.Color = state.BoxesBox_Color
+                        end
+                        if lib.black then
+                            Quad(lib.black)
+                            lib.black.Visible = true
+                        end
+                    else
+                        if lib.box then lib.box.Visible = false end
+                        if lib.black then lib.black.Visible = false end
+                    end
+
+                    -- ⭐ HEALTHBAR
+                    if state.HealthBar_Enabled then
+                        local ratio = hum.Health / hum.MaxHealth
+
+                        local barBottom = Vector2.new(center.X - w/2 - 5, bottom2D.Y)
+                        local barTop = Vector2.new(center.X - w/2 - 5, top2D.Y)
+
+                        local totalH = barBottom.Y - barTop.Y
+                        local healthY = bottom2D.Y - (totalH * ratio)
+
+                        lib.healthbar.From = barBottom
+                        lib.healthbar.To = barTop
+
+                        lib.greenhealth.From = barBottom
+                        lib.greenhealth.To = Vector2.new(barBottom.X, healthY)
+                        lib.greenhealth.Color = Color3.fromRGB(255,0,0):lerp(Color3.fromRGB(0,255,0), ratio)
+
+                        lib.healthbar.Visible = true
+                        lib.greenhealth.Visible = true
+                    else
+                        lib.healthbar.Visible = false
+                        lib.greenhealth.Visible = false
+                    end
+
+                    -- ⭐ NAME
+                    if state.ShowNames then
+                        lib.name.Position = Vector2.new(center.X, top2D.Y - 15)
+                        lib.name.Text = model.Name
+                        lib.name.Color = state.NameColor
+                        lib.name.Visible = true
+                    else
+                        lib.name.Visible = false
+                    end
+
+                    -- ⭐ DISTANCE
+                    if state.ShowDistance then
+                        lib.distance.Position = Vector2.new(center.X, bottom2D.Y + 5)
+                        lib.distance.Text = ("%d"):format(distance)
+                        lib.distance.Color = state.DistanceColor
+                        lib.distance.Visible = true
+                    else
+                        lib.distance.Visible = false
+                    end
+
+                ----------------------------------------------------------------
+                -- ⭐ OUTLINED BOX MODE
+                ----------------------------------------------------------------
+                else
+                    local top = Camera:WorldToViewportPoint(hrp.Position + Vector3.new(0,3,0))
+                    local bottom = Camera:WorldToViewportPoint(hrp.Position - Vector3.new(0,3,0))
+
+                    local h = math.abs(top.Y - bottom.Y)
+                    local w = h * 0.58
+
+                    local boxPos = Vector2.new(pos.X - w/2, pos.Y - h/2)
+                    local boxSize = Vector2.new(w, h)
+
+                    if state.BoxESP_Enabled then
+                        if lib.box and lib.box.outline then
+                            lib.box.outline.Size = boxSize
+                            lib.box.outline.Position = boxPos
+                            lib.box.outline.Visible = true
+                            lib.box.outline.Color = state.Box_Outline_Color
+                        end
+                        if lib.box and lib.box.main then
+                            lib.box.main.Size = boxSize
+                            lib.box.main.Position = boxPos
+                            lib.box.main.Visible = true
+                            lib.box.main.Color = state.Box_Color
+                        end
+                    else
+                        if lib.box and lib.box.outline then lib.box.outline.Visible = false end
+                        if lib.box and lib.box.main then lib.box.main.Visible = false end
+                    end
+
+                    -- ⭐ HEALTHBAR
+                    if state.HealthBar_Enabled then
+                        local ratio = hum.Health / hum.MaxHealth
+                        local barH = h * ratio
+                        local barY = pos.Y + h/2 - barH
+
+                        lib.healthbar.From = Vector2.new(pos.X - w/2 - 6, pos.Y + h/2)
+                        lib.healthbar.To = Vector2.new(pos.X - w/2 - 6, pos.Y - h/2)
+
+                        lib.greenhealth.From = Vector2.new(pos.X - w/2 - 6, pos.Y + h/2)
+                        lib.greenhealth.To = Vector2.new(pos.X - w/2 - 6, barY)
+                        lib.greenhealth.Color = Color3.fromRGB(255,0,0):lerp(Color3.fromRGB(0,255,0), ratio)
+
+                        lib.healthbar.Visible = true
+                        lib.greenhealth.Visible = true
+                    else
+                        lib.greenhealth.Visible = false
+                        lib.healthbar.Visible = false
+                    end
+
+                    -- ⭐ NAME
+                    if state.ShowNames then
+                        lib.name.Position = Vector2.new(pos.X, pos.Y - h/2 - 15)
+                        lib.name.Text = model.Name
+                        lib.name.Color = state.NameColor
+                        lib.name.Visible = true
+                    else
+                        lib.name.Visible = false
+                    end
+
+                    -- ⭐ DISTANCE
+                    if state.ShowDistance then
+                        lib.distance.Position = Vector2.new(pos.X, pos.Y + h/2 + 5)
+                        lib.distance.Text = ("%d"):format(distance)
+                        lib.distance.Color = state.DistanceColor
+                        lib.distance.Visible = true
+                    else
+                        lib.distance.Visible = false
+                    end
+                end
+
+                ----------------------------------------------------------------
+                -- ⭐ CHAMS SYSTEM
+                ----------------------------------------------------------------
+                if state.ShowChams then
+                    if not state.highlights[model] then
+                        local hl = Instance.new("Highlight", model)
+                        hl.FillTransparency = 0.45
+                        hl.OutlineTransparency = 1
+                        hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+                        state.highlights[model] = hl
+                        state.rainbowHue[model] = math.random()
+                    end
+
+                    if state.RainbowChams then
+                        state.rainbowHue[model] = (state.rainbowHue[model] + state.RainbowSpeed * 0.016) % 1
+                        state.highlights[model].FillColor = Color3.fromHSV(state.rainbowHue[model], 1, 1)
+                    else
+                        state.highlights[model].FillColor = state.ChamsColor
+                    end
+                    state.highlights[model].Enabled = true
+
+                else
+                    if state.highlights[model] then
+                        state.highlights[model].Enabled = false
+                    end
+                end
+
+            else
+                ----------------------------------------------------------------
+                -- ⭐ OFFSCREEN → HIDE EVERYTHING BUT KEEP OBJECTS
+                ----------------------------------------------------------------
+                local lib = state.espObjects[model]
+
+                if lib then
+                    -- Hide all components
+                    if lib.tracer then lib.tracer.Visible = false end
+                    if lib.blacktracer then lib.blacktracer.Visible = false end
+                    if lib.box then 
+                        if typeof(lib.box) == "table" then
+                            if lib.box.main then lib.box.main.Visible = false end
+                            if lib.box.outline then lib.box.outline.Visible = false end
+                        else
+                            lib.box.Visible = false
+                        end
+                    end
+                    if lib.black then lib.black.Visible = false end
+                    if lib.healthbar then lib.healthbar.Visible = false end
+                    if lib.greenhealth then lib.greenhealth.Visible = false end
+                    if lib.name then lib.name.Visible = false end
+                    if lib.distance then lib.distance.Visible = false end
+                end
+
+                if state.highlights[model] then
+                    state.highlights[model].Enabled = false
+                end
+            end
+        end
+    end
+
+    --------------------------------------------------------------------
+    -- REMOVE NOT SEEN THIS FRAME (DEAD OR LEFT GAME)
+    --------------------------------------------------------------------
+    for model, lib in pairs(state.espObjects) do
+        if not seen[model] then
+            for _, obj in pairs(lib) do
+                if typeof(obj) == "table" then
+                    if obj.main then pcall(function() obj.main:Remove() end) end
+                    if obj.outline then pcall(function() obj.outline:Remove() end) end
+                else
+                    pcall(function() obj:Remove() end)
+                end
+            end
+            state.espObjects[model] = nil
+        end
+    end
+
+    for model, hl in pairs(state.highlights) do
+        if not seen[model] then
+            if hl then pcall(function() hl:Destroy() end) end
+            state.highlights[model] = nil
+            state.rainbowHue[model] = nil
+        end
+    end
+end
+
+
+-- Weapon Chams Loop
+RunService.RenderStepped:Connect(function()
+    if state.WeaponChams or state.RainbowWeaponChams then
+        applyWeaponChams()
+    end
+end)
+
+local function findLocalCharacterInMatch()
+    for _, folder in ipairs(CharactersFolder:GetChildren()) do
+        local aTeam = folder:FindFirstChild('A')
+        if aTeam and aTeam:FindFirstChild(LocalPlayer.Name) then
+            return aTeam:FindFirstChild(LocalPlayer.Name)
+        end
+        local bTeam = folder:FindFirstChild('B')
+        if bTeam and bTeam:FindFirstChild(LocalPlayer.Name) then
+            return bTeam:FindFirstChild(LocalPlayer.Name)
+        end
+    end
+    return nil
+end
+
+local function applyToWeapons()
+    if not state.WeaponChams and not state.RainbowWeaponChams then return end
+    local char = findLocalCharacterInMatch()
+    if not char then return end
+    
+    -- Apply to guns
+    for _, model in ipairs(char:GetChildren()) do
+        if model:IsA("Model") and model:FindFirstChild("Gun") then
+            local gunObj = model.Gun:FindFirstChild("Object")
+            if gunObj and gunObj:FindFirstChild("FirstPerson") then
+                applyWeaponChams(gunObj.FirstPerson)
+            end
+        end
+    end
+    
+    -- Apply to knife in Default folder
+    local defaultFolder = char:FindFirstChild("Default")
+    if defaultFolder then
+        local knife = defaultFolder:FindFirstChild("Knife")
+        if knife then
+            local knifeBase = knife:FindFirstChild("Base")
+            if knifeBase then
+                applyWeaponChams(knifeBase)
+            end
+            -- Also apply to all parts in knife
+            for _, child in ipairs(knife:GetDescendants()) do
+                if child:IsA("BasePart") then
+                    applyWeaponChams(knife)
+                    break
+                end
+            end
+        end
+    end
+    
+    -- Apply to direct knife
+    local knife = char:FindFirstChild("Knife")
+    if knife then
+        local knifeBase = knife:FindFirstChild("Base")
+        if knifeBase then
+            applyWeaponChams(knifeBase)
+        end
+        -- Also apply to all parts in knife
+        for _, child in ipairs(knife:GetDescendants()) do
+            if child:IsA("BasePart") then
+                applyWeaponChams(knife)
+                break
+            end
+        end
+    end
+end
+
+local function updateWeaponChamsAppearance()
+    for part, _ in pairs(state.processedWeaponParts) do
+        if part and part.Parent then
+            if not state.RainbowWeaponChams then
+                -- Update static colors
+                for _, child in ipairs(part:GetDescendants()) do
+                    if child:IsA("BasePart") then
+                        child.Color = state.WeaponChamsColor
+                        child.Transparency = state.WeaponChamsTransparency
+                    end
+                end
+            end
+        end
+    end
+end
+
+local function clearWeaponChams()
+    for part, connection in pairs(state.rainbowWeaponConnections) do
+        if connection then
+            connection:Disconnect()
+        end
+    end
+    state.rainbowWeaponConnections = {}
+   
+    for part, _ in pairs(state.processedWeaponParts) do
+        if part and part.Parent then
+            -- Remove any highlights
+            local highlight = part:FindFirstChild("WeaponChamsHighlight")
+            if highlight then
+                highlight:Destroy()
+            end
+           
+            -- Reset parts to default material and color
+            for _, child in ipairs(part:GetDescendants()) do
+                if child:IsA("BasePart") then
+                    child.Material = Enum.Material.Plastic
+                    child.Color = Color3.new(1, 1, 1) -- Reset to default white color
+                    child.Transparency = 0 -- Reset transparency
+                end
+            end
+        end
+    end
+    state.processedWeaponParts = {}
+end
+
+-- AIMBOT & TRIGGERBOT LOGIC
+local function getClosestHead()
+    local enemies = getEnemies()
+    local center
+    if state.IsMobile then
+        local viewportSize = Camera.ViewportSize
+        center = Vector2.new(viewportSize.X/2, viewportSize.Y/2)
+    else
+        center = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
+    end
+    
+    local best, dist = nil, math.huge
+    
+    for _, model in ipairs(enemies) do
+        local targetPart
+        if state.SilentAimTargetPart == "Random" then
+            targetPart = model:FindFirstChild("Head") or model:FindFirstChild("HumanoidRootPart")
+        else
+            targetPart = model:FindFirstChild(state.SilentAimTargetPart)
+        end
+        
+        local hum = model:FindFirstChildOfClass('Humanoid')
+        if targetPart and hum and hum.Health > 0 then
+            local sp, on = Camera:WorldToViewportPoint(targetPart.Position)
+            if on then
+                local d = (Vector2.new(sp.X, sp.Y) - center).Magnitude
+                if d < dist then 
+                    dist = d
+                    best = targetPart 
+                end
+            end
+        end
+    end
+    
+    return best
+end
+
+-- REPLACE the aimAt function with this:
+local function aimAt(targetPart)
+    if not targetPart then 
+        state.CurrentAimbotTarget = nil
+        return 
+    end
+    
+    local pos = Camera.CFrame.Position
+    local targetPos = targetPart.Position
+    
+    -- Calculate smoothing factor - 1 = hard lock, 20 = very smooth
+    local smoothing = math.clamp(state.AimbotSmoothing, 1, 20)
+    
+    if smoothing == 1 then
+        -- Hard lock - instant aim
+        Camera.CFrame = CFrame.new(pos, targetPos)
+    else
+        -- Smooth aim - use current camera direction and lerp
+        local currentLook = Camera.CFrame.LookVector
+        local targetDirection = (targetPos - pos).Unit
+        
+        -- Convert smoothing 2-20 to lerp factor 0.5-0.05
+        local smoothFactor = 0.5 / (smoothing * 0.5)
+        
+        -- Apply smoothing
+        local smoothedLook = currentLook:Lerp(targetDirection, smoothFactor)
+        Camera.CFrame = CFrame.new(pos, pos + smoothedLook)
+    end
+end
+
+local function isVisible(part)
+    local char = LocalPlayer.Character
+    if not char or not part then return false end
+    local root = char:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+    local dir = part.Position - root.Position
+    local params = RaycastParams.new()
+    params.FilterType = Enum.RaycastFilterType.Blacklist
+    params.FilterDescendantsInstances = {char}
+    local result = Workspace:Raycast(root.Position, dir, params)
+    return not result or result.Instance:IsDescendantOf(part.Parent)
+end
+
+local function performShoot()
+    local now = tick()
+    if now - (state.LastShoot or 0) < 0.1 then return end
+    state.LastShoot = now
+    mouse1press()
+    task.wait(0.03)
+    mouse1release()
+end
+
+local function triggerbotShoot(targetPart)
+    if not targetPart or not state.TriggerbotEnabled then return end
+    if isVisible(targetPart) then performShoot() end
+end
+
+-- RMB CONTROL
+local function pressRMB()
+    if state.rmbHolding then return end
+    VirtualInputManager:SendMouseButtonEvent(0, 0, 1, true, game, 0)
+    state.rmbHolding = true
+end
+
+local function releaseRMB()
+    if not state.rmbHolding then return end
+    VirtualInputManager:SendMouseButtonEvent(0, 0, 1, false, game, 0)
+    state.rmbHolding = false
+end
+
+-- UNDETECTED FLY FUNCTION (from previous integration)
+local function applyFastMove()
+    if not state.FastMoveEnabled then return end
+    local character = LocalPlayer.Character
+    if not character then return end
+    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    if not humanoidRootPart or not humanoid or humanoid.Health <= 0 then return end
+    local moveDirection = Vector3.new(0, 0, 0)
+    local camera = Workspace.CurrentCamera
+    local forward = camera.CFrame.LookVector
+    local right = camera.CFrame.RightVector
+    local up = Vector3.new(0, 1, 0)
+    -- Handle movement inputs
+    if UserInputService:IsKeyDown(Enum.KeyCode.W) then
+        moveDirection = moveDirection + forward
+    end
+    if UserInputService:IsKeyDown(Enum.KeyCode.S) then
+        moveDirection = moveDirection - forward
+    end
+    if UserInputService:IsKeyDown(Enum.KeyCode.D) then
+        moveDirection = moveDirection + right
+    end
+    if UserInputService:IsKeyDown(Enum.KeyCode.A) then
+        moveDirection = moveDirection - right
+    end
+    if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
+        moveDirection = moveDirection + up
+    end
+    if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then
+        moveDirection = moveDirection - up
+    end
+    -- Normalize and apply velocity
+    if moveDirection.Magnitude > 0 then
+        moveDirection = moveDirection.Unit * state.FastMoveSpeed
+        humanoidRootPart.Velocity = Vector3.new(moveDirection.X, moveDirection.Y, moveDirection.Z)
+    else
+        humanoidRootPart.Velocity = Vector3.new(0, 0, 0)
+    end
+    -- Disable gravity by setting humanoid state
+    if humanoid:GetState() ~= Enum.HumanoidStateType.Freefall then
+        humanoid:ChangeState(Enum.HumanoidStateType.Freefall)
+    end
+end
+
+-- Infinite Jump function
+local function setupInfiniteJump()
+    UserInputService.InputBegan:Connect(function(input, gameProcessed)
+        if gameProcessed then return end
+        if input.KeyCode == Enum.KeyCode.Space and state.InfiniteJump then
+            local character = LocalPlayer.Character
+            if character then
+                local humanoid = character:FindFirstChildOfClass("Humanoid")
+                if humanoid then
+                    humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+                end
+            end
+        end
+    end)
+end
+
+-- UI: AIMING TAB
+local AimGroup = Tabs.Aiming:AddLeftGroupbox("Aiming Settings", "crosshair")
+local lastSilentAimState = nil
+local uiInitialized = false
+
+task.defer(function()
+    uiInitialized = true
+end)
+
+AimGroup:AddToggle('AimbotToggle', {
+    Text = 'Enable Aimbot',
+    Default = false,
+    Callback = function(v)
+        state.AimbotEnabled = v
+        Library:Notify("Aimbot " .. (v and "Enabled" or "Disabled"), 2)
+    end
+})
+
+AimGroup:AddToggle('AlwaysOnAimbotToggle', {
+    Text = 'Always On Aimbot',
+    Default = false,
+    Callback = function(v)
+        state.AlwaysOnAimbot = v
+    end
+})
+
+AimGroup:AddSlider('AimbotSmoothing', {
+    Text = 'Aimbot Smoothing',
+    Default = 10,
+    Min = 1,
+    Max = 20,
+    Rounding = 0,
+    Tooltip = '1 = instant aim, 20 = very smooth',
+    Callback = function(v)
+        state.AimbotSmoothing = v
+        Library:Notify("Aimbot Smoothing: " .. v, 2)
+    end
+})
+
+local aimKeyLabel = AimGroup:AddLabel('Aimbot Key')
+aimKeyLabel:AddKeyPicker('AimbotKey', {
+    Default = 'N',
+    Mode = 'Hold',
+    Text = 'Aimbot key (hold to aim)'
+})
+
+AimGroup:AddToggle('TriggerbotToggle', {
+    Text = 'Enable Triggerbot',
+    Default = false,
+    Callback = function(v)
+        state.TriggerbotEnabled = v
+        Library:Notify("Triggerbot " .. (v and "Enabled" or "Disabled"), 2)
+    end
+})
+
+AimGroup:AddToggle('AlwaysOnTriggerbotToggle', {
+    Text = 'Always On Triggerbot',
+    Default = false,
+    Callback = function(v)
+        state.AlwaysOnTriggerbot = v
+    end
+})
+
+local triggerKeyLabel = AimGroup:AddLabel('Triggerbot Key')
+triggerKeyLabel:AddKeyPicker('TriggerbotKey', {
+    Default = 'M',
+    Mode = 'Hold',
+    Text = 'Triggerbot key (hold to shoot)'
+})
+
+AimGroup:AddToggle('SilentAimToggle', {
+    Text = 'Enable Silent Aim',
+    Default = false,
+    Callback = function(v)
+        if not uiInitialized or v == lastSilentAimState then
+            lastSilentAimState = v
+            return
+        end
+        lastSilentAimState = v
+        if not state.SilentAimSupported then
+            Library:Notify("Silent Aim is not supported for this executor", 5)
+            Toggles.SilentAimToggle:SetValue(false)
+            lastSilentAimState = false
+            return
+        end
+        if not state.SilentAimLoaded then
+            Library:Notify("Silent Aim failed to load. Using fallback aimbot.", 5)
+            Toggles.SilentAimToggle:SetValue(false)
+            lastSilentAimState = false
+            return
+        end
+        state.SilentAimEnabled = v
+        toggleSilentAim(v, false)
+        updateSilentAimSettings()
+    end
+})
+
+local silentAimKeyLabel = AimGroup:AddLabel('Silent Aim Key')
+silentAimKeyLabel:AddKeyPicker('SilentAimKey', {
+    Default = 'RightAlt',
+    Mode = 'Toggle',
+    Text = 'Silent Aim key (toggle)',
+    Callback = function(v)
+        if v then
+            if not state.SilentAimSupported then
+                Library:Notify("Silent Aim: This executor does not support required functions.", 5)
+                return
+            end
+            if not state.SilentAimLoaded then
+                Library:Notify("Silent Aim failed to load. Using fallback aimbot.", 5)
+                return
+            end
+            state.SilentAimEnabled = not state.SilentAimEnabled
+            Toggles.SilentAimToggle:SetValue(state.SilentAimEnabled)
+            toggleSilentAim(state.SilentAimEnabled, false)
+            updateSilentAimSettings()
+        end
+    end
+})
+
+AimGroup:AddDropdown('AimPartDropdown', {
+    Text = 'Aim Part',
+    Default = 'Head',
+    Values = {'Head', 'HumanoidRootPart', 'Random'},
+    Callback = function(v)
+        state.SilentAimTargetPart = v
+        if state.SilentAimLoaded then
+            updateSilentAimSettings()
+        end
+    end
+})
+
+AimGroup:AddToggle('SilentAimFOVVisible', {
+    Text = 'Fov Circle',
+    Default = true,
+    Callback = function(v)
+        state.SilentAimFOVVisible = v
+        if state.SilentAimLoaded then
+            updateSilentAimSettings()
+        end
+    end
+})
+
+AimGroup:AddSlider('SilentAimFOV', {
+    Text = 'Silent Aim FOV',
+    Default = 360,
+    Min = 50,
+    Max = 1000,
+    Rounding = 0,
+    Callback = function(v)
+        state.SilentAimFOV = v
+        if state.SilentAimLoaded then
+            updateSilentAimSettings()
+        end
+    end
+})
+
+AimGroup:AddSlider('SilentAimHitChance', {
+    Text = 'Silent Aim Hit Chance',
+    Default = 100,
+    Min = 0,
+    Max = 100,
+    Rounding = 0,
+    Callback = function(v)
+        state.SilentAimHitChance = v
+        if state.SilentAimLoaded then
+            updateSilentAimSettings()
+        end
+    end
+})
+
+-- UI: VISUALS TAB
+local VisualsGroup = Tabs.Visuals:AddLeftGroupbox("Visuals Settings", "eye")
+
+VisualsGroup:AddToggle('ESPEnabled', {
+    Text = 'Enable Visuals',
+    Default = true,
+    Callback = function(v)
+        state.ESPEnabled = v
+        Library:Notify("Visuals " .. (v and "Enabled" or "Disabled"), 2)
+    end
+})
+
+-- In the Box Color Picker callback, replace with:
+VisualsGroup:AddToggle('BoxESP_Enabled', {
+    Text = 'Boxes',
+    Default = true,
+    Callback = function(v)
+        state.BoxESP_Enabled = v
+        state.BoxesESP = v
+        updateCompleteESP() -- Force refresh
+    end
+}):AddColorPicker('BoxColorPicker', {
+    Default = state.Box_Color,
+    Title = 'Box Color',
+    Callback = function(col)
+        state.Box_Color = col
+        state.BoxesBox_Color = col
+        updateBoxESPColors() -- Update existing ESP objects
+        updateCompleteESP() -- Refresh ESP
+    end
+})
+
+-- In the Tracer Color Picker callback, replace with:
+VisualsGroup:AddToggle('Tracer_Enabled', {
+    Text = 'Tracers',
+    Default = true,
+    Callback = function(v)
+        state.Tracer_Enabled = v
+        updateCompleteESP() -- Force refresh
+    end
+}):AddColorPicker('TracerColorPicker', {
+    Default = state.Tracer_Color,
+    Title = 'ESP Tracer Color',
+    Callback = function(col)
+        state.Tracer_Color = col
+        state.BoxesTracer_Color = col
+        updateBoxESPColors() -- Update existing ESP objects
+        updateCompleteESP() -- Refresh ESP
+    end
+})
+
+VisualsGroup:AddToggle('ESPChams', {
+    Text = 'Chams',
+    Default = true,
+    Callback = function(v)
+        state.ShowChams = v
+    end
+}):AddColorPicker('ChamsColorPicker', {
+    Default = state.ChamsColor,
+    Title = 'Chams Color',
+    Transparency = 0,
+    Callback = function(col)
+        state.ChamsColor = col
+    end
+})
+
+VisualsGroup:AddToggle('ESPNames', {
+    Text = 'Names',
+    Default = true,
+    Callback = function(v)
+        state.ShowNames = v
+    end
+}):AddColorPicker('NameColorPicker', {
+    Default = state.NameColor,
+    Title = 'Name Color',
+    Transparency = 0,
+    Callback = function(col)
+        state.NameColor = col
+    end
+})
+
+VisualsGroup:AddToggle('ESPDistance', {
+    Text = 'Distance',
+    Default = true,
+    Callback = function(v)
+        state.ShowDistance = v
+    end
+}):AddColorPicker('DistanceColorPicker', {
+    Default = state.DistanceColor,
+    Title = 'Distance Color',
+    Transparency = 0,
+    Callback = function(col)
+        state.DistanceColor = col
+    end
+})
+
+VisualsGroup:AddToggle('HealthBar_Enabled', {
+    Text = 'Health Bar',
+    Default = true,
+    Callback = function(v)
+        state.HealthBar_Enabled = v
+    end
+})
+
+VisualsGroup:AddToggle('RainbowChams', {
+    Text = 'Rainbow Chams',
+    Default = true,
+    Callback = function(v)
+        state.RainbowChams = v
+    end
+})
+
+-- Add Player Viewer to Visuals tab
+VisualsGroup:AddToggle('PlayerViewerToggle', {
+    Text = 'Player Viewer',
+    Default = false,
+    Callback = function(v)
+        state.PlayerViewerEnabled = v
+        Library:Notify("Player Viewer " .. (v and "Enabled" or "Disabled"), 2)
+    end
+}):AddColorPicker('PlayerViewerColorPicker', {
+    Default = state.PlayerViewerColor,
+    Title = 'Player Viewer Color',
+    Callback = function(col)
+        state.PlayerViewerColor = col
+        playerViewerSystem.updateColor()
+    end
+})
+
+-- Add Local Chams toggles to Visuals tab
+VisualsGroup:AddToggle('LocalChamsToggle', {
+    Text = 'Local Chams',
+    Default = false,
+    Callback = function(v)
+        if v and state.RainbowLocalChams then
+            state.RainbowLocalChams = false
+            Toggles.RainbowLocalChamsToggle:SetValue(false)
+        end
+        state.LocalChams = v
+        if v then
+            localChamsSystem.enable()
+        else
+            localChamsSystem.disable()
+        end
+        Library:Notify("Local Chams " .. (v and "Enabled" or "Disabled"), 2)
+    end
+}):AddColorPicker('LocalChamsColorPicker', {
+    Default = state.LocalChamsColor,
+    Title = 'Local Chams Color',
+    Transparency = 0,
+    Callback = function(col)
+        state.LocalChamsColor = col
+        if state.LocalChams and not state.RainbowLocalChams then
+            localChamsSystem.rebuild()
+        end
+    end
+})
+
+VisualsGroup:AddToggle('RainbowLocalChamsToggle', {
+    Text = 'Rainbow Local Chams',
+    Default = false,
+    Callback = function(v)
+        if v and state.LocalChams then
+            state.LocalChams = false
+            Toggles.LocalChamsToggle:SetValue(false)
+        end
+        state.RainbowLocalChams = v
+        localChamsSystem.toggleRainbow(v)
+        Library:Notify("Rainbow Local Chams " .. (v and "Enabled" or "Disabled"), 2)
+    end
+})
+
+VisualsGroup:AddSlider('LocalChamsTransparency', {
+    Text = 'Local Chams Transparency',
+    Default = 0.35,
+    Min = 0,
+    Max = 1,
+    Rounding = 2,
+    Callback = function(v)
+        state.LocalChamsTransparency = v
+        if state.LocalChams or state.RainbowLocalChams then
+            localChamsSystem.rebuild()
+        end
+    end
+})
+
+VisualsGroup:AddToggle('RainbowWeaponChamsToggle', {
+    Text = 'Rainbow Weapon Chams',
+    Default = false,
+    Callback = function(v)
+        if v and state.WeaponChams then
+            state.WeaponChams = false
+            Toggles.WeaponChamsToggle:SetValue(false)
+        end
+        state.RainbowWeaponChams = v
+        if not v and not state.WeaponChams then
+            clearWeaponChams()
+        elseif v and state.WeaponChams then
+            state.WeaponChams = false
+            Toggles.WeaponChamsToggle:SetValue(false)
+        end
+        Library:Notify("Rainbow Weapon Chams " .. (v and "Enabled" or "Disabled"), 2)
+    end
+})
+
+VisualsGroup:AddToggle('WeaponChamsToggle', {
+    Text = 'Weapon Chams',
+    Default = false,
+    Callback = function(v)
+        if v and state.RainbowWeaponChams then
+            state.RainbowWeaponChams = false
+            Toggles.RainbowWeaponChamsToggle:SetValue(false)
+        end
+        state.WeaponChams = v
+        if not v and not state.RainbowWeaponChams then
+            clearWeaponChams()
+        elseif v and state.RainbowWeaponChams then
+            state.RainbowWeaponChams = false
+            Toggles.RainbowWeaponChamsToggle:SetValue(false)
+        end
+        Library:Notify("Weapon Chams " .. (v and "Enabled" or "Disabled"), 2)
+    end
+}):AddColorPicker('WeaponChamsColorPicker', {
+    Default = state.WeaponChamsColor,
+    Title = 'Weapon Chams Color',
+    Transparency = 0,
+    Callback = function(col)
+        state.WeaponChamsColor = col
+        updateWeaponChamsAppearance()
+    end
+})
+
+VisualsGroup:AddSlider('WeaponChamsTransparency', {
+    Text = 'Weapon Chams Transparency',
+    Default = 0,
+    Min = 0,
+    Max = 1,
+    Rounding = 2,
+    Callback = function(v)
+        state.WeaponChamsTransparency = v
+        updateWeaponChamsAppearance()
+    end
+})
+
+
+-- UI: MISC TAB
+local MiscGroup = Tabs.Misc:AddLeftGroupbox("Movement", "move")
+
+MiscGroup:AddToggle('FastMove', {
+    Text = 'Undetected Fly',
+    Default = false,
+    Callback = function(v)
+        state.FastMoveEnabled = v
+        Library:Notify("Undetected Fly " .. (v and "Enabled" or "Disabled"), 2)
+    end
+})
+
+MiscGroup:AddSlider('FastMoveSpeed', {
+    Text = 'Move Speed',
+    Default = 50,
+    Min = 16,
+    Max = 300,
+    Rounding = 0,
+    Callback = function(v)
+        state.FastMoveSpeed = v
+    end
+})
+
+MiscGroup:AddToggle('InfiniteJumpToggle', {
+    Text = 'Infinite Jump',
+    Default = false,
+    Callback = function(v)
+        state.InfiniteJump = v
+        Library:Notify("Infinite Jump " .. (v and "Enabled" or "Disabled"), 2)
+    end
+})
+
+MiscGroup:AddToggle('NoclipToggle', {
+    Text = 'Noclip',
+    Default = false,
+    Callback = function(v)
+        if v then
+            toggleNoclipFunction()
+        else
+            if state.NoclipEnabled then
+                toggleNoclipFunction() -- Toggle off if currently enabled
+            end
+        end
+    end
+})
+
+MiscGroup:AddToggle('WalkSpeedToggle', {
+    Text = 'Walk Speed',
+    Default = false,
+    Callback = function(v)
+        state.WalkSpeedEnabled = v
+        if v then
+            updateWalkSpeed()
+        else
+            -- Reset to default walkspeed when disabled
+            local character = LocalPlayer.Character
+            if character then
+                local humanoid = character:FindFirstChildOfClass("Humanoid")
+                if humanoid then
+                    humanoid.WalkSpeed = 16
+                end
+            end
+        end
+        Library:Notify("Walk Speed " .. (v and "Enabled" or "Disabled"), 2)
+    end
+})
+
+MiscGroup:AddSlider('WalkSpeedSlider', {
+    Text = 'Walk Speed Value',
+    Default = 16,
+    Min = 16,
+    Max = 200,
+    Rounding = 0,
+    Callback = function(v)
+        state.WalkSpeed = v
+        if state.WalkSpeedEnabled then
+            updateWalkSpeed()
+        end
+    end
+})
+
+-- Add Car Fly toggles to Misc tab
+MiscGroup:AddToggle('CarFlyToggle', {
+    Text = 'Car Fly',
+    Default = false,
+    Callback = function(v)
+        toggleCarFly()
+    end
+})
+
+MiscGroup:AddSlider('CarFlySpeed', {
+    Text = 'Car Fly Speed',
+    Default = 50,
+    Min = 1,
+    Max = 1000, -- Increased from 300 to 1000
+    Rounding = 0,
+    Callback = function(v)
+        state.CarFlySpeed = v
+    end
+})
+
+-- Add Gun Grabber buttons to Misc tab
+local GunGrabberGroup = Tabs.Misc:AddRightGroupbox("Gun Grabber", "package")
+
+GunGrabberGroup:AddButton("Grab M9", function()
+    grabM9()
+end)
+
+GunGrabberGroup:AddButton("Grab Remington 870", function()
+    grabRemington()
+end)
+
+GunGrabberGroup:AddButton("Grab AK-47", function()
+    grabAK47()
+end)
+
+-- Add Gun Mods section to Misc tab
+local GunModsGroup = Tabs.Misc:AddRightGroupbox("Gun Mods", "wrench")
+
+local function updateGunMods()
+    if gunModsSystem._checkMods() then
+        gunModsSystem.start()
+    else
+        gunModsSystem.stop()
+    end
+end
+
+GunModsGroup:AddToggle('AutoFireToggle', {
+    Text = 'Auto Fire',
+    Default = false,
+    Callback = function(v)
+        state.AutoFireEnabled = v
+        updateGunMods()
+        Library:Notify("Auto Fire " .. (v and "Enabled" or "Disabled"), 2)
+    end
+})
+
+GunModsGroup:AddToggle('InfiniteAmmoToggle', {
+    Text = 'Infinite Ammo',
+    Default = false,
+    Callback = function(v)
+        state.InfiniteAmmoEnabled = v
+        updateGunMods()
+        Library:Notify("Infinite Ammo " .. (v and "Enabled" or "Disabled"), 2)
+    end
+})
+
+GunModsGroup:AddToggle('InstantReloadToggle', {
+    Text = 'Instant Reload',
+    Default = false,
+    Callback = function(v)
+        state.InstantReloadEnabled = v
+        updateGunMods()
+        Library:Notify("Instant Reload " .. (v and "Enabled" or "Disabled"), 2)
+    end
+})
+
+GunModsGroup:AddToggle('InfiniteRangeToggle', {
+    Text = 'Infinite Range',
+    Default = false,
+    Callback = function(v)
+        state.InfiniteRangeEnabled = v
+        updateGunMods()
+        Library:Notify("Infinite Range " .. (v and "Enabled" or "Disabled"), 2)
+    end
+})
+
+GunModsGroup:AddToggle('NoSpreadToggle', {
+    Text = 'No Spread',
+    Default = false,
+    Callback = function(v)
+        state.NoSpreadEnabled = v
+        updateGunMods()
+        Library:Notify("No Spread " .. (v and "Enabled" or "Disabled"), 2)
+    end
+})
+
+GunModsGroup:AddToggle('RapidFireToggle', {
+    Text = 'Rapid Fire',
+    Default = false,
+    Callback = function(v)
+        state.RapidFireEnabled = v
+        updateGunMods()
+        Library:Notify("Rapid Fire " .. (v and "Enabled" or "Disabled"), 2)
+    end
+})
+
+GunModsGroup:AddSlider('RapidFireMultiplier', {
+    Text = 'Rapid Fire Multiplier',
+    Default = 1,
+    Min = 1,
+    Max = 100,
+    Rounding = 0,
+    Tooltip = 'Higher values = faster firing',
+    Callback = function(v)
+        state.RapidFireMultiplier = v
+        updateGunMods()
+        Library:Notify("Rapid Fire Multiplier: " .. v .. "x", 2)
+    end
+})
+
+
+-- UI SETTINGS
+local MenuGroup = Tabs["UI Settings"]:AddLeftGroupbox("Menu", "wrench")
+
+MenuGroup:AddToggle("KeybindMenuOpen", {
+    Default = Library.KeybindFrame.Visible,
+    Text = "Open Keybind Menu",
+    Callback = function(value)
+        Library.KeybindFrame.Visible = value
+    end,
+})
+
+MenuGroup:AddToggle("ShowCustomCursor", {
+    Text = "Custom Cursor",
+    Default = true,
+    Callback = function(Value)
+        Library.ShowCustomCursor = Value
+    end,
+})
+
+MenuGroup:AddDropdown("NotificationSide", {
+    Values = { "Left", "Right" },
+    Default = "Right",
+    Text = "Notification Side",
+    Callback = function(Value)
+        Library:SetNotifySide(Value)
+    end,
+})
+
+MenuGroup:AddDropdown("DPIDropdown", {
+    Values = { "50%", "75%", "100%", "125%", "150%", "175%", "200%" },
+    Default = "100%",
+    Text = "DPI Scale",
+    Callback = function(Value)
+        Value = Value:gsub("%%", "")
+        local DPI = tonumber(Value)
+        Library:SetDPIScale(DPI)
+    end,
+})
+
+MenuGroup:AddDivider()
+
+MenuGroup:AddLabel("Menu bind")
+    :AddKeyPicker("MenuKeybind", { Default = "End", NoUI = true, Text = "Menu keybind" })
+
+MenuGroup:AddButton("Unload", function()
+    Library:Unload()
+end)
+
+Library.ToggleKeybind = Options.MenuKeybind
+
+-- MAIN LOOPS AND CONNECTIONS
+state.connection = RunService.Heartbeat:Connect(function(dt)
+    if state.ESPEnabled then
+        updateCompleteESP()
+    end
+    applyFastMove()
+    local targetPart = getClosestHead()
+    if targetPart then
+        state.enemiesDetected = true
+        if state.AimbotEnabled and (state.AlwaysOnAimbot or Options.AimbotKey:GetState()) then
+            aimAt(targetPart)
+        end
+        if state.TriggerbotEnabled and (state.AlwaysOnTriggerbot or Options.TriggerbotKey:GetState()) then
+            triggerbotShoot(targetPart)
+        end
+    else
+        state.enemiesDetected = false
+    end
+    if state.enemiesDetected then pressRMB() else releaseRMB() end
+end)
+
+-- Weapon Chams Loop
+RunService.RenderStepped:Connect(applyToWeapons)
+
+-- Character Added for Tracers
+LocalPlayer.CharacterAdded:Connect(function()
+    task.wait(1)
+    if state.TracersEnabled then
+        flareTracerSystem.startMonitoring()
+    end
+
+    -- Update walkspeed if enabled
+    if state.WalkSpeedEnabled then
+        updateWalkSpeed()
+    end
+    -- Rebuild local chams
+    if state.LocalChams or state.RainbowLocalChams then
+        localChamsSystem.rebuild()
+    end
+end)
+
+-- Initialize infinite jump
+setupInfiniteJump()
+
+-- Initialize flare tracers
+flareTracerSystem.startMonitoring()
+
+-- Start gun mods system if any mod is enabled
+task.spawn(function()
+    if state.AutoFireEnabled or state.InfiniteAmmoEnabled or state.InstantReloadEnabled or 
+       state.InfiniteRangeEnabled or state.NoSpreadEnabled or state.RapidFireEnabled then
+        gunModsSystem.start()
+    end
+end)
+
+-- CLEANUP ON UNLOAD
+Library:OnUnload(function()
+    releaseRMB()
+    flareTracerSystem.disable()
+    clearWeaponChams()
+    localChamsSystem.disable()
+    DisableCarFlight()
+    gunModsSystem.stop()
+    playerViewerSystem.destroy()
+    state.localChamsDead = true
+    if state.folderWatcher then state.folderWatcher:Disconnect() end
+    if state.WebhookThread then task.cancel(state.WebhookThread) end
+    for model, lib in pairs(state.espObjects) do
+        for _, obj in pairs(lib) do
+            if type(obj) == "table" and obj.main and obj.outline then
+                DestroyDrawing(obj.main)
+                DestroyDrawing(obj.outline)
+            elseif obj and obj.Remove then
+                pcall(obj.Remove, obj)
+            end
+        end
+    end
+    for _, hl in pairs(state.highlights) do
+        if hl and hl.Parent then hl:Destroy() end
+    end
+    state.highlights = {}
+    state.rainbowHue = {}
+    if state.FOVCircle then
+        state.FOVCircle:Remove()
+        state.FOVCircle = nil
+    end
+    if state.FOVCircleOutline then
+        state.FOVCircleOutline:Remove()
+        state.FOVCircleOutline = nil
+    end
+    if state.SilentAimMouseBox then
+        state.SilentAimMouseBox:Remove()
+        state.SilentAimMouseBox = nil
+    end
+    if state.connection then
+        state.connection:Disconnect()
+    end
+    if WatermarkConnection then
+        WatermarkConnection:Disconnect()
+    end
+end)
+
+-- THEME & SAVE MANAGERS
+ThemeManager:SetLibrary(Library)
+SaveManager:SetLibrary(Library)
+SaveManager:IgnoreThemeSettings()
+SaveManager:SetIgnoreIndexes({ 'MenuKeybind', 'AimbotKey', 'TriggerbotKey', 'SilentAimKey' })
+ThemeManager:SetFolder('VoidHub')
+SaveManager:SetFolder('VoidHub/game')
+SaveManager:BuildConfigSection(Tabs["UI Settings"])
+ThemeManager:ApplyToTab(Tabs["UI Settings"])
+SaveManager:LoadAutoloadConfig()
